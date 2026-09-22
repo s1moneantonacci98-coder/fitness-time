@@ -1,0 +1,17 @@
+{
+  "name": "fitness-time",
+  "version": "1.0.0",
+  "description": "PWA di gestione schede di allenamento per Fitness Time Club (Adelfia, BA).",
+  "private": true,
+  "scripts": {
+    "test": "node scripts/smoke_test.js",
+    "icons": "python3 scripts/generate_icons.py"
+  },
+  "keywords": ["pwa", "fitness", "supabase"],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.117.0",
+    "node-html-parser": "^9.0.4"
+  }
+}

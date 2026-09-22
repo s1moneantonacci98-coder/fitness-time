@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Fitness Time Club</title>
+<meta name="description" content="Le tue schede di allenamento, il timer di recupero e lo storico progressi — Fitness Time Club, Adelfia (BA).">
+<meta name="theme-color" content="#0d0f12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Fitness Time">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= TOP BAR ================= -->
+  <header class="topbar">
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" class="brand-logo">
+      <div class="brand-text">
+        <strong>Fitness Time</strong>
+        <span>Club · Adelfia</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="conn-badge" class="badge badge-offline" hidden>Offline</span>
+      <button id="logout-btn" class="icon-btn" type="button" hidden aria-label="Esci">⏻</button>
+    </div>
+  </header>
+
+  <!-- ================= AUTH ================= -->
+  <section id="view-auth" class="view view-auth">
+    <div class="auth-card">
+      <img src="icons/icon-512.png" alt="Fitness Time Club" class="auth-logo">
+      <h1>Fitness Time Club</h1>
+      <p class="muted">Accedi con l'account che ti ha fornito il tuo coach.</p>
+
+      <form id="auth-form" class="auth-form" autocomplete="on">
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="auth-email" name="email" required autocomplete="username" placeholder="mario.rossi@email.it">
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="auth-password" name="password" required autocomplete="current-password" minlength="6" placeholder="••••••••">
+        </label>
+
+        <div id="signup-fields" class="signup-fields" hidden>
+          <label class="field">
+            <span>Nome</span>
+            <input type="text" id="auth-nome" name="nome" autocomplete="given-name">
+          </label>
+          <label class="field">
+            <span>Cognome</span>
+            <input type="text" id="auth-cognome" name="cognome" autocomplete="family-name">
+          </label>
+          <label class="field">
+            <span>Telefono</span>
+            <input type="tel" id="auth-telefono" name="telefono" autocomplete="tel">
+          </label>
+        </div>
+
+        <p id="auth-error" class="form-error" role="alert" hidden></p>
+
+        <button type="submit" id="auth-submit" class="btn btn-primary btn-block">Accedi</button>
+        <button type="button" id="auth-toggle-mode" class="btn btn-ghost btn-block">Non hai un account? Registrati</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= APP ================= -->
+  <main id="view-app" hidden>
+
+    <!-- ---- Allenamento Oggi ---- -->
+    <section id="view-oggi" class="view" data-view="oggi">
+      <h2 class="view-title">Allenamento Oggi</h2>
+      <div id="oggi-content" class="stack">
+        <p class="muted">Caricamento…</p>
+      </div>
+    </section>
+
+    <!-- ---- Le Mie Schede ---- -->
+    <section id="view-schede" class="view" data-view="schede" hidden>
+      <h2 class="view-title">Le Mie Schede</h2>
+      <div id="schede-content" class="stack">
+        <p class="muted">Caricamento…</p>
+      </div>
+    </section>
+
+    <!-- ---- Storico / Progressione ---- -->
+    <section id="view-storico" class="view" data-view="storico" hidden>
+      <h2 class="view-title">Storico &amp; Progressione</h2>
+
+      <div class="card">
+        <div class="stat-row">
+          <div class="stat">
+            <span class="stat-value" id="stat-volume">–</span>
+            <span class="stat-label">kg totali (30 gg)</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-sessioni">–</span>
+            <span class="stat-label">sessioni loggate</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">Record personale</h3>
+        <div class="pr-lookup">
+          <input type="text" id="pr-esercizio" placeholder="Nome esercizio (es. Panca Piana)">
+          <button id="pr-btn" class="btn btn-secondary" type="button">Cerca</button>
+        </div>
+        <p id="pr-result" class="pr-result muted">Digita il nome di un esercizio della tua scheda.</p>
+      </div>
+
+      <h3 class="card-title">Ultime sessioni</h3>
+      <div id="storico-content" class="stack">
+        <p class="muted">Caricamento…</p>
+      </div>
+    </section>
+
+    <!-- ---- Info Palestra ---- -->
+    <section id="view-info" class="view" data-view="info" hidden>
+      <h2 class="view-title">Info Palestra &amp; Orari</h2>
+      <div id="info-content" class="stack"></div>
+    </section>
+
+  </main>
+
+  <!-- ================= TAB BAR ================= -->
+  <nav id="tabbar" class="tabbar" hidden aria-label="Navigazione principale">
+    <button class="tab-btn is-active" data-target="oggi" type="button">
+      <span class="tab-icon" aria-hidden="true">🏋️</span><span>Oggi</span>
+    </button>
+    <button class="tab-btn" data-target="schede" type="button">
+      <span class="tab-icon" aria-hidden="true">📋</span><span>Schede</span>
+    </button>
+    <button class="tab-btn" data-target="storico" type="button">
+      <span class="tab-icon" aria-hidden="true">📈</span><span>Storico</span>
+    </button>
+    <button class="tab-btn" data-target="info" type="button">
+      <span class="tab-icon" aria-hidden="true">ℹ️</span><span>Info</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- ================= TIMER RECUPERO (overlay) ================= -->
+<div id="timer-overlay" class="timer-overlay" hidden role="dialog" aria-modal="true" aria-label="Timer di recupero">
+  <div class="timer-card">
+    <span class="timer-label" id="timer-exercise-label">Recupero</span>
+    <div class="timer-display" id="timer-display">01:30</div>
+    <div class="timer-controls">
+      <button type="button" class="btn btn-round" data-timer-adjust="-15">−15s</button>
+      <button type="button" class="btn btn-round btn-primary" id="timer-pause-btn">Pausa</button>
+      <button type="button" class="btn btn-round" data-timer-adjust="15">+15s</button>
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" id="timer-skip-btn">Salta recupero</button>
+  </div>
+</div>
+
+<!-- ================= TOAST ================= -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="app.js" defer></script>
+</body>
+</html>

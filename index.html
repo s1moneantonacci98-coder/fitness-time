@@ -28,6 +28,7 @@
     </div>
     <div class="topbar-actions">
       <span id="conn-badge" class="badge badge-offline" hidden>Offline</span>
+      <button id="back-btn" class="icon-btn" type="button" hidden aria-label="Indietro">←</button>
       <button id="logout-btn" class="icon-btn" type="button" hidden aria-label="Esci">⏻</button>
     </div>
   </header>
@@ -72,8 +73,41 @@
     </div>
   </section>
 
-  <!-- ================= APP ================= -->
+  <!-- ================= DASHBOARD ISTRUTTORE ================= -->
+  <main id="view-dashboard" hidden>
+    <div class="dash-header">
+      <h2 class="view-title">Dashboard Istruttore</h2>
+      <button type="button" class="btn btn-primary btn-sm" id="new-athlete-btn">+ Nuovo Atleta</button>
+    </div>
+
+    <input type="search" id="athlete-search" class="search-input" placeholder="Cerca per nome o cognome…">
+
+    <div class="filter-pills" id="filter-pills">
+      <button type="button" class="pill is-active" data-filter="tutti">Tutti<span class="pill-count" id="count-tutti">0</span></button>
+      <button type="button" class="pill" data-filter="sala_pesi">🏋️ Sala Pesi<span class="pill-count" id="count-sala_pesi">0</span></button>
+      <button type="button" class="pill" data-filter="personal">⭐ Personal<span class="pill-count" id="count-personal">0</span></button>
+      <button type="button" class="pill" data-filter="nuoto">🏊 Nuoto<span class="pill-count" id="count-nuoto">0</span></button>
+    </div>
+
+    <div id="athlete-list" class="stack">
+      <p class="muted">Caricamento…</p>
+    </div>
+  </main>
+
+  <!-- ================= PROFILO / SCHEDA ATLETA (vista coach) ================= -->
+  <main id="view-athlete-detail" hidden>
+    <div id="athlete-detail-content" class="stack">
+      <p class="muted">Caricamento…</p>
+    </div>
+  </main>
+
+  <!-- ================= APP (Simulazione Vista Atleta) ================= -->
   <main id="view-app" hidden>
+
+    <div id="simulate-banner" class="simulate-banner" hidden>
+      <span>👁️ Stai simulando: <strong id="simulate-athlete-name">—</strong></span>
+      <button type="button" class="btn btn-sm btn-secondary" id="simulate-exit-btn">← Dashboard</button>
+    </div>
 
     <!-- ---- Allenamento Oggi ---- -->
     <section id="view-oggi" class="view" data-view="oggi">
@@ -160,6 +194,127 @@
       <button type="button" class="btn btn-round" data-timer-adjust="15">+15s</button>
     </div>
     <button type="button" class="btn btn-ghost btn-block" id="timer-skip-btn">Salta recupero</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: + AGGIUNGI ESERCIZIO ================= -->
+<div id="add-exercise-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Aggiungi esercizio">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">+ Aggiungi Esercizio</h3>
+      <button type="button" class="icon-btn" id="add-exercise-close" aria-label="Chiudi">✕</button>
+    </div>
+    <form id="add-exercise-form" class="auth-form">
+      <div class="aex-mode-toggle">
+        <button type="button" class="chip-toggle is-active" id="aex-mode-catalogo" data-mode="catalogo">📋 Catalogo</button>
+        <button type="button" class="chip-toggle" id="aex-mode-custom" data-mode="custom">✏️ Altro / personalizzato</button>
+      </div>
+
+      <div id="aex-catalogo-fields">
+        <label class="field">
+          <span>Gruppo muscolare</span>
+          <select id="aex-gruppo" class="select-input">
+            <option value="">Seleziona un gruppo…</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Esercizio</span>
+          <select id="aex-esercizio-catalogo" class="select-input" disabled>
+            <option value="">Seleziona prima un gruppo…</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="aex-custom-fields" hidden>
+        <label class="field">
+          <span>Nome esercizio</span>
+          <input type="text" id="aex-nome" name="aex-nome" placeholder="Es. Panca Piana">
+        </label>
+        <label class="field">
+          <span>Gruppo muscolare</span>
+          <input type="text" id="aex-target" name="aex-target" placeholder="Es. Pettorali">
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Serie x Ripetizioni</span>
+        <input type="text" id="aex-serie-reps" name="aex-serie-reps" placeholder="Es. 3x10">
+      </label>
+      <label class="field">
+        <span>Recupero (secondi)</span>
+        <input type="number" id="aex-recupero" name="aex-recupero" min="0" step="5" placeholder="Es. 90">
+      </label>
+      <label class="field">
+        <span>Note / Carico indicativo</span>
+        <input type="text" id="aex-note" name="aex-note" placeholder="Es. 20kg, presa stretta">
+      </label>
+      <p id="aex-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="aex-submit" class="btn btn-primary btn-block">Salva esercizio</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: + NUOVO ATLETA ================= -->
+<div id="new-athlete-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Nuovo atleta">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">+ Nuovo Atleta</h3>
+      <button type="button" class="icon-btn" id="new-athlete-close" aria-label="Chiudi">✕</button>
+    </div>
+    <form id="new-athlete-form" class="auth-form">
+      <label class="field">
+        <span>Nome</span>
+        <input type="text" id="nat-nome" name="nat-nome" required placeholder="Es. Marco">
+      </label>
+      <label class="field">
+        <span>Cognome</span>
+        <input type="text" id="nat-cognome" name="nat-cognome" placeholder="Es. Rossi">
+      </label>
+      <label class="field">
+        <span>Telefono</span>
+        <input type="tel" id="nat-telefono" name="nat-telefono" placeholder="Es. 333 1234567">
+      </label>
+      <label class="field">
+        <span>Categoria</span>
+        <select id="nat-categoria" name="nat-categoria" class="select-input">
+          <option value="sala_pesi">🏋️ Sala Pesi</option>
+          <option value="personal">⭐ Personal</option>
+          <option value="nuoto">🏊 Nuoto</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Note</span>
+        <input type="text" id="nat-note" name="nat-note" placeholder="Es. Obiettivo, orari preferiti…">
+      </label>
+      <p id="nat-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="nat-submit" class="btn btn-primary btn-block">Crea atleta</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: + ASSEGNA NUOVA SCHEDA ================= -->
+<div id="new-scheda-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Assegna nuova scheda">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">+ Assegna Nuova Scheda</h3>
+      <button type="button" class="icon-btn" id="new-scheda-close" aria-label="Chiudi">✕</button>
+    </div>
+    <form id="new-scheda-form" class="auth-form">
+      <label class="field">
+        <span>Titolo scheda</span>
+        <input type="text" id="nsc-titolo" name="nsc-titolo" required placeholder="Es. Scheda Full Body">
+      </label>
+      <label class="field">
+        <span>Obiettivo</span>
+        <input type="text" id="nsc-obiettivo" name="nsc-obiettivo" placeholder="Es. Ipertrofia, dimagrimento…">
+      </label>
+      <label class="field">
+        <span>Giorni di allenamento</span>
+        <input type="text" id="nsc-giorni" name="nsc-giorni" value="Giorno A, Giorno B, Giorno C" placeholder="Separati da virgola">
+      </label>
+      <p id="nsc-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="nsc-submit" class="btn btn-primary btn-block">Crea scheda</button>
+    </form>
   </div>
 </div>
 

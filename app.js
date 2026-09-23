@@ -10,6 +10,24 @@ const SUPABASE_URL = 'https://gsuyrptpycrgznqjtbtx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W-2_EuqFH0u3vFNg8gwW0g_T7byZ8uF';
 const APP_TAG = 'fitnesstime'; // deve combaciare con il trigger fitnesstime_handle_new_user
 
+/* ---------------------------------------------------------------------
+ * MODALITA' DEMO (per presentazioni rapide, es. all'istruttore in sala pesi)
+ * ------------------------------------------------------------------- *
+ * Con DEMO_MODE = true l'app salta completamente login/registrazione e
+ * apre subito la scheda del profilo demo, usando la chiave anon/publishable.
+ * Le policy RLS lato Supabase concedono lettura/inserimento SOLO sulle righe
+ * legate a DEMO_PROFILE_ID (vedi fitnesstime_seed_data.sql) — nessun altro
+ * dato reale degli atleti e' esposto. Riportare DEMO_MODE a false (e far
+ * tornare gli atleti al login vero) quando la demo e' terminata. */
+const DEMO_MODE = true;
+const DEMO_PROFILE = {
+  id: '11111111-1111-4111-8111-111111111111',
+  ruolo: 'trainer',
+  nome: 'Istruttore',
+  cognome: 'Demo',
+  email: 'demo@fitnesstime.local',
+};
+
 const PENDING_LOGS_KEY = 'ft_pending_logs_v1';
 
 const GYM_INFO = {
@@ -39,11 +57,35 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
  * ------------------------------------------------------------------- */
 const state = {
   user: null,
-  profile: null,      // riga fitnesstime_profiles
-  schede: [],          // tutte le schede dell'atleta (con sessioni/esercizi annidati)
+  profile: null,      // riga fitnesstime_profiles (atleta "attivo": vero utente loggato, o atleta simulato dal coach)
+  schede: [],          // tutte le schede dell'atleta corrente (con sessioni/esercizi annidati)
   activeScheda: null,
   loadedViews: new Set(),
   activeTimer: null,
+
+  // --- Dashboard Istruttore ---
+  mode: 'dashboard',       // 'dashboard' | 'athlete-detail' | 'simulate'
+  coach: null,             // profilo trainer/coach (DEMO_PROFILE in demo)
+  athletes: [],            // elenco atleti (fitnesstime_profiles ruolo='athlete') con conteggio schede
+  athleteFilter: 'tutti',  // 'tutti' | 'sala_pesi' | 'personal' | 'nuoto'
+  athleteSearch: '',
+  selectedAthlete: null,   // atleta aperto nella vista dettaglio coach
+
+  // --- Catalogo esercizi (selezione rapida modal "+ Esercizio") ---
+  catalogo: {},            // { 'Pettorali': ['Croci', 'Distensioni Panca Bassa', ...], ... }
+};
+
+// Ordine di visualizzazione dei gruppi muscolari nel catalogo (rispecchia
+// l'ordine del modulo cartaceo "Scheda base" della palestra).
+const GRUPPI_MUSCOLARI_ORDINE = [
+  'Cardio', 'Addominali', 'Lombari', 'Pettorali', 'Dorsali',
+  'Gambe/Glutei', 'Spalle', 'Bicipiti', 'Tricipiti',
+];
+
+const CATEGORIE = {
+  sala_pesi: { label: 'Sala Pesi', icon: '🏋️' },
+  personal: { label: 'Personal', icon: '⭐' },
+  nuoto: { label: 'Nuoto', icon: '🏊' },
 };
 
 /* ---------------------------------------------------------------------
@@ -66,6 +108,14 @@ function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function slugify(str) {
+  return String(str || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // rimuove accenti
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 24);
 }
 
 function fmtDate(d) {
@@ -102,7 +152,7 @@ async function flushPendingLogs() {
   for (const entry of queue) {
     try {
       const { _queuedAt, ...args } = entry;
-      const { error } = await sb.rpc('fitnesstime_log_set', args);
+      const { error } = await submitWorkoutLog(args);
       if (error) remaining.push(entry);
     } catch {
       remaining.push(entry);
@@ -112,6 +162,30 @@ async function flushPendingLogs() {
   if (remaining.length < queue.length) {
     toast(`Sincronizzate ${queue.length - remaining.length} serie salvate offline`, 'success');
   }
+}
+
+/* ---------------------------------------------------------------------
+ * REGISTRAZIONE SERIE (log allenamento)
+ * ------------------------------------------------------------------- *
+ * In DEMO_MODE non esiste un auth.uid() reale (ne' per l'atleta vero ne'
+ * per l'atleta simulato dal coach), quindi la RPC fitnesstime_log_set
+ * (pensata per utenti autenticati) non e' utilizzabile: si scrive
+ * direttamente su fitnesstime_workout_logs con profile_id esplicito,
+ * permesso dalla policy RLS anon scoped ai soli profili ruolo='athlete'. */
+async function submitWorkoutLog(args) {
+  if (DEMO_MODE) {
+    return sb.from('fitnesstime_workout_logs').insert({
+      profile_id: state.profile.id,
+      sessione_id: args.p_sessione_id,
+      esercizio_id: args.p_esercizio_id,
+      serie_numero: args.p_serie_numero,
+      carico_kg: args.p_carico_kg,
+      ripetizioni_effettive: args.p_ripetizioni_effettive,
+      rpe_percepito: args.p_rpe_percepito,
+      note: args.p_note,
+    });
+  }
+  return sb.rpc('fitnesstime_log_set', args);
 }
 
 window.addEventListener('online', () => { updateConnBadge(); flushPendingLogs(); });
@@ -185,12 +259,56 @@ $('#logout-btn').addEventListener('click', async () => {
 });
 
 sb.auth.onAuthStateChange((_event, session) => {
+  if (DEMO_MODE) return; // in demo l'app non passa mai dal vero login Supabase
   if (session && session.user) {
     enterApp(session.user);
   } else {
     exitApp();
   }
 });
+
+/* ---------------------------------------------------------------------
+ * INGRESSO DEMO (zero barriere: nessuna registrazione/credenziali)
+ * ------------------------------------------------------------------- */
+async function enterDemoApp() {
+  state.user = null;
+  state.coach = DEMO_PROFILE;
+
+  $('#view-auth').hidden = true;
+  $('#logout-btn').hidden = true; // nessuna sessione reale da cui uscire
+
+  await loadCatalogoEsercizi();
+  await goToDashboard();
+}
+
+/* ---------------------------------------------------------------------
+ * NAVIGAZIONE TRA LE MACRO-VISTE (dashboard / dettaglio atleta / simulazione)
+ * ------------------------------------------------------------------- */
+function setMacroView(mode) {
+  state.mode = mode;
+  $('#view-dashboard').hidden = mode !== 'dashboard';
+  $('#view-athlete-detail').hidden = mode !== 'athlete-detail';
+  $('#view-app').hidden = mode !== 'simulate';
+  $('#tabbar').hidden = mode !== 'simulate';
+  $('#simulate-banner').hidden = mode !== 'simulate';
+  $('#back-btn').hidden = mode === 'dashboard';
+}
+
+$('#back-btn').addEventListener('click', () => {
+  if (state.mode === 'simulate') {
+    exitSimulate();
+  } else if (state.mode === 'athlete-detail') {
+    goToDashboard();
+  }
+});
+
+$('#simulate-exit-btn').addEventListener('click', exitSimulate);
+
+async function goToDashboard() {
+  setMacroView('dashboard');
+  await loadAthletes();
+  renderDashboard();
+}
 
 /* ---------------------------------------------------------------------
  * INGRESSO / USCITA APP
@@ -217,6 +335,7 @@ async function enterApp(user) {
   $('#logout-btn').hidden = false;
 
   state.loadedViews.clear();
+  await loadCatalogoEsercizi();
   await loadSchede();
   renderView('oggi');
   renderInfoView();
@@ -273,6 +392,533 @@ async function loadSchede() {
 
   state.schede = data || [];
   state.activeScheda = state.schede.find((s) => s.attiva) || state.schede[0] || null;
+}
+
+/* ---------------------------------------------------------------------
+ * CATALOGO ESERCIZI (selezione rapida, no digitazione manuale)
+ * ------------------------------------------------------------------- */
+async function loadCatalogoEsercizi() {
+  const { data, error } = await sb
+    .from('fitnesstime_catalogo_esercizi')
+    .select('gruppo_muscolare, nome')
+    .order('ordine', { ascending: true });
+
+  if (error || !data) {
+    state.catalogo = {};
+    return;
+  }
+
+  const grouped = {};
+  data.forEach((row) => {
+    if (!grouped[row.gruppo_muscolare]) grouped[row.gruppo_muscolare] = [];
+    grouped[row.gruppo_muscolare].push(row.nome);
+  });
+
+  const ordered = {};
+  GRUPPI_MUSCOLARI_ORDINE.forEach((g) => { if (grouped[g]) ordered[g] = grouped[g]; });
+  Object.keys(grouped).forEach((g) => { if (!ordered[g]) ordered[g] = grouped[g]; });
+
+  state.catalogo = ordered;
+}
+
+/* =======================================================================
+ * DASHBOARD ISTRUTTORE
+ * ===================================================================== */
+async function loadAthletes() {
+  const { data, error } = await sb
+    .from('fitnesstime_profiles')
+    .select(`
+      id, nome, cognome, telefono, categoria, note, attivo,
+      fitnesstime_schede ( id, titolo, attiva, created_at )
+    `)
+    .eq('ruolo', 'athlete')
+    .order('nome', { ascending: true })
+    .order('created_at', { referencedTable: 'fitnesstime_schede', ascending: false });
+
+  if (error) {
+    toast('Errore nel caricamento degli atleti.', 'error');
+    state.athletes = [];
+    return;
+  }
+
+  state.athletes = (data || []).map((a) => ({
+    ...a,
+    schedaAttiva: (a.fitnesstime_schede || []).find((s) => s.attiva) || null,
+  }));
+}
+
+function categoriaBadgeHtml(categoria) {
+  const c = CATEGORIE[categoria];
+  if (!c) return '';
+  return `<span class="badge-categoria cat-${categoria}">${c.icon} ${escapeHtml(c.label)}</span>`;
+}
+
+function renderDashboard() {
+  renderFilterCounts();
+
+  const el = $('#athlete-list');
+  const q = state.athleteSearch.trim().toLowerCase();
+  const filtered = state.athletes.filter((a) => {
+    const matchCat = state.athleteFilter === 'tutti' || a.categoria === state.athleteFilter;
+    const fullName = `${a.nome} ${a.cognome}`.toLowerCase();
+    const matchSearch = !q || fullName.includes(q);
+    return matchCat && matchSearch;
+  });
+
+  if (!filtered.length) {
+    el.innerHTML = emptyState('🔍', 'Nessun atleta trovato con questi filtri.');
+    return;
+  }
+
+  el.innerHTML = filtered.map((a) => `
+    <div class="card athlete-card" data-athlete-id="${a.id}">
+      <div class="athlete-avatar">${escapeHtml((a.nome[0] || '') + (a.cognome[0] || ''))}</div>
+      <div class="athlete-info">
+        <div class="athlete-name">${escapeHtml(a.nome)} ${escapeHtml(a.cognome)}</div>
+        <div class="athlete-meta">
+          ${categoriaBadgeHtml(a.categoria)}
+          <span class="scheda-status ${a.schedaAttiva ? 'has-scheda' : ''}">
+            ${a.schedaAttiva ? `✔ ${escapeHtml(a.schedaAttiva.titolo)}` : 'Nessuna scheda'}
+          </span>
+        </div>
+      </div>
+      <button type="button" class="btn btn-secondary btn-sm" data-open-athlete="${a.id}">Apri</button>
+    </div>
+  `).join('');
+
+  $$('[data-open-athlete]', el).forEach((btn) => {
+    btn.addEventListener('click', () => goToAthleteDetail(btn.dataset.openAthlete));
+  });
+  $$('.athlete-card', el).forEach((card) => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('[data-open-athlete]')) return;
+      goToAthleteDetail(card.dataset.athleteId);
+    });
+  });
+}
+
+function renderFilterCounts() {
+  const counts = { tutti: state.athletes.length, sala_pesi: 0, personal: 0, nuoto: 0 };
+  state.athletes.forEach((a) => { if (counts[a.categoria] != null) counts[a.categoria] += 1; });
+  Object.entries(counts).forEach(([key, n]) => {
+    const el = document.getElementById(`count-${key}`);
+    if (el) el.textContent = n;
+  });
+}
+
+$$('.pill', $('#filter-pills')).forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.athleteFilter = btn.dataset.filter;
+    $$('.pill', $('#filter-pills')).forEach((b) => b.classList.toggle('is-active', b === btn));
+    renderDashboard();
+  });
+});
+
+$('#athlete-search').addEventListener('input', (e) => {
+  state.athleteSearch = e.target.value;
+  renderDashboard();
+});
+
+/* ---------------------------------------------------------------------
+ * MODAL: + NUOVO ATLETA
+ * ------------------------------------------------------------------- */
+function openNewAthleteModal() {
+  $('#new-athlete-form').reset();
+  $('#nat-error').hidden = true;
+  $('#new-athlete-overlay').hidden = false;
+  $('#nat-nome').focus();
+}
+function closeNewAthleteModal() {
+  $('#new-athlete-overlay').hidden = true;
+}
+
+$('#new-athlete-btn').addEventListener('click', openNewAthleteModal);
+$('#new-athlete-close').addEventListener('click', closeNewAthleteModal);
+$('#new-athlete-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'new-athlete-overlay') closeNewAthleteModal();
+});
+
+$('#new-athlete-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = $('#nat-error');
+  errEl.hidden = true;
+
+  const nome = $('#nat-nome').value.trim();
+  const cognome = $('#nat-cognome').value.trim();
+  const telefono = $('#nat-telefono').value.trim();
+  const categoria = $('#nat-categoria').value;
+  const note = $('#nat-note').value.trim();
+
+  if (!nome) {
+    errEl.textContent = 'Inserisci almeno il nome dell\'atleta.';
+    errEl.hidden = false;
+    return;
+  }
+
+  const submitBtn = $('#nat-submit');
+  submitBtn.disabled = true;
+
+  try {
+    // fitnesstime_profiles.email e' NOT NULL, ma il form "+ Nuovo Atleta" (come da
+    // specifica) non la richiede: generiamo un placeholder finche' l'atleta non
+    // completa una vera registrazione (user_id resta null in quel caso).
+    const emailPlaceholder = `${slugify(nome)}.${slugify(cognome) || 'atleta'}.${Date.now().toString(36)}@fitnesstime.local`;
+
+    const { error } = await sb.from('fitnesstime_profiles').insert({
+      ruolo: 'athlete',
+      nome,
+      cognome: cognome || '',
+      email: emailPlaceholder,
+      telefono: telefono || null,
+      categoria,
+      note: note || null,
+      attivo: true,
+    });
+    if (error) throw error;
+
+    closeNewAthleteModal();
+    toast('Atleta creato ✔', 'success', 1800);
+    await loadAthletes();
+    renderDashboard();
+  } catch (err) {
+    errEl.textContent = 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
+    errEl.hidden = false;
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+/* ---------------------------------------------------------------------
+ * VISTA: PROFILO / SCHEDA ATLETA (lato coach)
+ * ------------------------------------------------------------------- */
+async function goToAthleteDetail(athleteId) {
+  setMacroView('athlete-detail');
+  $('#athlete-detail-content').innerHTML = '<p class="muted">Caricamento…</p>';
+
+  const { data, error } = await sb
+    .from('fitnesstime_profiles')
+    .select(`
+      id, nome, cognome, telefono, categoria, note, attivo,
+      fitnesstime_schede (
+        id, titolo, obiettivo, data_inizio, data_scadenza, settimane_durata, note_coach, attiva,
+        fitnesstime_sessioni (
+          id, nome, ordine, note,
+          fitnesstime_esercizi (
+            id, nome, target_muscolare, video_url, ordine, schema_serie, serie,
+            ripetizioni, carico_target, percentuale_1rm, rpe, rir,
+            tempo_recupero_secondi, note_tecniche
+          )
+        )
+      )
+    `)
+    .eq('id', athleteId)
+    .order('created_at', { referencedTable: 'fitnesstime_schede', ascending: false })
+    .single();
+
+  if (error || !data) {
+    toast('Errore nel caricamento del profilo atleta.', 'error');
+    goToDashboard();
+    return;
+  }
+
+  data.fitnesstime_schede = (data.fitnesstime_schede || []).map((sc) => ({
+    ...sc,
+    fitnesstime_sessioni: (sc.fitnesstime_sessioni || [])
+      .sort((a, b) => a.ordine - b.ordine)
+      .map((s) => ({
+        ...s,
+        fitnesstime_esercizi: (s.fitnesstime_esercizi || []).sort((a, b) => a.ordine - b.ordine),
+      })),
+  }));
+
+  state.selectedAthlete = data;
+  renderAthleteDetail();
+}
+
+function renderAthleteDetail() {
+  const a = state.selectedAthlete;
+  const el = $('#athlete-detail-content');
+  if (!a) { el.innerHTML = ''; return; }
+
+  const schedaAttiva = (a.fitnesstime_schede || []).find((s) => s.attiva) || null;
+
+  el.innerHTML = `
+    <div class="card session-card">
+      <div class="exercise-head">
+        <h3 class="card-title" style="margin-bottom:0;">${escapeHtml(a.nome)} ${escapeHtml(a.cognome)}</h3>
+        ${categoriaBadgeHtml(a.categoria)}
+      </div>
+      ${a.telefono ? `<p class="muted">📞 ${escapeHtml(a.telefono)}</p>` : ''}
+      ${a.note ? `<p class="muted">💬 ${escapeHtml(a.note)}</p>` : ''}
+      <button type="button" class="btn btn-secondary btn-block" id="simulate-btn" ${schedaAttiva ? '' : 'disabled'}>
+        👁️ Simula Allenamento (Vista Atleta)
+      </button>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-block" id="assign-scheda-btn">+ Assegna Nuova Scheda</button>
+
+    ${(a.fitnesstime_schede || []).length ? (a.fitnesstime_schede || []).map((scheda) => `
+      <div class="card session-card" data-scheda-id="${scheda.id}">
+        <div class="exercise-head">
+          <span class="exercise-name">${escapeHtml(scheda.titolo)}</span>
+          <div class="scheda-head-actions">
+            <span class="chip ${scheda.attiva ? 'chip-red' : ''}">${scheda.attiva ? 'Attiva' : 'Conclusa'}</span>
+            <button type="button" class="icon-btn icon-btn-danger icon-btn-sm" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">🗑️</button>
+          </div>
+        </div>
+        ${scheda.obiettivo ? `<p class="muted">${escapeHtml(scheda.obiettivo)}</p>` : ''}
+        ${!scheda.attiva ? `<button type="button" class="btn btn-secondary btn-sm" data-activate-scheda="${scheda.id}" style="margin-bottom:10px;">✔ Rendi attiva</button>` : ''}
+        ${(scheda.fitnesstime_sessioni || []).map((s) => `
+          <div class="exercise-item">
+            <div class="exercise-head">
+              <span class="exercise-name">${escapeHtml(s.nome)}</span>
+              <button type="button" class="btn btn-ghost btn-sm" data-add-ex-sessione="${s.id}">+ Esercizio</button>
+            </div>
+            ${(s.fitnesstime_esercizi || []).length
+              ? (s.fitnesstime_esercizi || []).map((ex) => `
+                <div class="exercise-row-line" data-esercizio-id="${ex.id}">
+                  <p style="margin:4px 0; font-size:14px; flex:1;">
+                    <strong>${escapeHtml(ex.nome)}</strong> — ${ex.serie}×${escapeHtml(ex.ripetizioni)}
+                    · ⏱ ${ex.tempo_recupero_secondi}s
+                    ${ex.note_tecniche ? `<br><span class="muted">💡 ${escapeHtml(ex.note_tecniche)}</span>` : ''}
+                  </p>
+                  <button type="button" class="icon-btn icon-btn-danger icon-btn-sm" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">✕</button>
+                </div>
+              `).join('')
+              : '<p class="muted" style="font-size:13px;">Nessun esercizio in questo giorno.</p>'}
+          </div>
+        `).join('') || '<p class="muted">Nessun giorno configurato.</p>'}
+      </div>
+    `).join('') : emptyState('📋', 'Nessuna scheda assegnata. Usa "+ Assegna Nuova Scheda" per crearne una.')}
+  `;
+
+  const simBtn = $('#simulate-btn');
+  if (simBtn) simBtn.addEventListener('click', () => startSimulate(a, schedaAttiva));
+
+  $('#assign-scheda-btn').addEventListener('click', () => openNewSchedaModal(a.id));
+
+  $$('[data-delete-scheda]', el).forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmAndDeleteScheda(btn.dataset.deleteScheda);
+    });
+  });
+
+  $$('[data-activate-scheda]', el).forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      activateScheda(btn.dataset.activateScheda);
+    });
+  });
+
+  $$('[data-remove-esercizio]', el).forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      confirmAndRemoveEsercizio(btn.dataset.removeEsercizio);
+    });
+  });
+
+  $$('[data-add-ex-sessione]', el).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const sessione = findSessioneById(a, btn.dataset.addExSessione);
+      if (sessione) openAddExerciseModal(sessione, 'athlete-detail');
+    });
+  });
+}
+
+function findSessioneById(athlete, sessioneId) {
+  for (const scheda of athlete.fitnesstime_schede || []) {
+    const found = (scheda.fitnesstime_sessioni || []).find((s) => s.id === sessioneId);
+    if (found) return found;
+  }
+  return null;
+}
+
+/* ---------------------------------------------------------------------
+ * GESTIONE SCHEDE / ESERCIZI (elimina, attiva, rimuovi) — vista coach
+ * ------------------------------------------------------------------- */
+async function confirmAndDeleteScheda(schedaId) {
+  if (!window.confirm('Sei sicuro di voler eliminare questa scheda? Verranno eliminati anche tutti i giorni e gli esercizi collegati.')) {
+    return;
+  }
+
+  try {
+    // Il CASCADE lato database (on delete cascade su scheda_id/sessione_id)
+    // rimuove automaticamente sessioni ed esercizi collegati.
+    const { error } = await sb.from('fitnesstime_schede').delete().eq('id', schedaId);
+    if (error) throw error;
+
+    toast('Scheda eliminata ✔', 'success', 1800);
+
+    if (state.selectedAthlete) {
+      await goToAthleteDetail(state.selectedAthlete.id);
+    }
+    await loadAthletes();
+  } catch (err) {
+    toast('Errore nell\'eliminazione della scheda: ' + ((err && err.message) || 'riprova.'), 'error');
+  }
+}
+
+async function activateScheda(schedaId) {
+  const athlete = state.selectedAthlete;
+  if (!athlete) return;
+
+  try {
+    // Disattiva tutte le altre schede dell'atleta, poi attiva quella scelta
+    // (una sola scheda attiva per atleta alla volta).
+    const altreIds = (athlete.fitnesstime_schede || [])
+      .map((s) => s.id)
+      .filter((id) => id !== schedaId);
+
+    if (altreIds.length) {
+      const { error: errOff } = await sb
+        .from('fitnesstime_schede')
+        .update({ attiva: false })
+        .in('id', altreIds);
+      if (errOff) throw errOff;
+    }
+
+    const { error: errOn } = await sb
+      .from('fitnesstime_schede')
+      .update({ attiva: true })
+      .eq('id', schedaId);
+    if (errOn) throw errOn;
+
+    toast('Scheda impostata come attiva ✔', 'success', 1800);
+    await goToAthleteDetail(athlete.id);
+    await loadAthletes();
+  } catch (err) {
+    toast('Errore nell\'attivazione della scheda: ' + ((err && err.message) || 'riprova.'), 'error');
+  }
+}
+
+async function confirmAndRemoveEsercizio(esercizioId) {
+  if (!window.confirm('Rimuovere questo esercizio dalla sessione?')) return;
+
+  try {
+    const { error } = await sb.from('fitnesstime_esercizi').delete().eq('id', esercizioId);
+    if (error) throw error;
+
+    toast('Esercizio rimosso ✔', 'success', 1600);
+
+    if (state.selectedAthlete) {
+      // Rimozione locale immediata, senza un round-trip completo al server.
+      (state.selectedAthlete.fitnesstime_schede || []).forEach((sc) => {
+        (sc.fitnesstime_sessioni || []).forEach((s) => {
+          s.fitnesstime_esercizi = (s.fitnesstime_esercizi || []).filter((ex) => ex.id !== esercizioId);
+        });
+      });
+      renderAthleteDetail();
+    }
+  } catch (err) {
+    toast('Errore nella rimozione dell\'esercizio: ' + ((err && err.message) || 'riprova.'), 'error');
+  }
+}
+
+/* ---------------------------------------------------------------------
+ * MODAL: + ASSEGNA NUOVA SCHEDA
+ * ------------------------------------------------------------------- */
+function openNewSchedaModal(athleteId) {
+  $('#new-scheda-form').reset();
+  $('#nsc-giorni').value = 'Giorno A, Giorno B, Giorno C';
+  $('#nsc-error').hidden = true;
+  $('#new-scheda-overlay').hidden = false;
+  $('#new-scheda-overlay').dataset.athleteId = athleteId;
+  $('#nsc-titolo').focus();
+}
+function closeNewSchedaModal() {
+  $('#new-scheda-overlay').hidden = true;
+}
+
+$('#new-scheda-close').addEventListener('click', closeNewSchedaModal);
+$('#new-scheda-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'new-scheda-overlay') closeNewSchedaModal();
+});
+
+$('#new-scheda-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const athleteId = $('#new-scheda-overlay').dataset.athleteId;
+  const errEl = $('#nsc-error');
+  errEl.hidden = true;
+
+  const titolo = $('#nsc-titolo').value.trim();
+  const obiettivo = $('#nsc-obiettivo').value.trim();
+  const giorni = $('#nsc-giorni').value.split(',').map((g) => g.trim()).filter(Boolean);
+
+  if (!titolo) {
+    errEl.textContent = 'Inserisci il titolo della scheda.';
+    errEl.hidden = false;
+    return;
+  }
+  if (!giorni.length) {
+    errEl.textContent = 'Inserisci almeno un giorno di allenamento.';
+    errEl.hidden = false;
+    return;
+  }
+
+  const submitBtn = $('#nsc-submit');
+  submitBtn.disabled = true;
+
+  try {
+    // Nota: le policy demo concedono ad anon solo SELECT+INSERT (mai UPDATE),
+    // quindi una scheda precedente non viene disattivata automaticamente qui:
+    // la vista prende sempre la scheda "attiva" piu' recente (vedi ordinamento
+    // per created_at in goToAthleteDetail/loadAthletes).
+    const { data: scheda, error: schedaErr } = await sb
+      .from('fitnesstime_schede')
+      .insert({ profile_id: athleteId, titolo, obiettivo: obiettivo || null, attiva: true })
+      .select('id')
+      .single();
+    if (schedaErr) throw schedaErr;
+
+    const sessioniPayload = giorni.map((nome, i) => ({ scheda_id: scheda.id, nome, ordine: i + 1 }));
+    const { error: sessioniErr } = await sb.from('fitnesstime_sessioni').insert(sessioniPayload);
+    if (sessioniErr) throw sessioniErr;
+
+    closeNewSchedaModal();
+    toast('Scheda creata ✔', 'success', 1800);
+    await goToAthleteDetail(athleteId);
+    await loadAthletes(); // aggiorna lo stato "scheda attiva" nella lista dashboard
+  } catch (err) {
+    errEl.textContent = 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
+    errEl.hidden = false;
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+
+/* ---------------------------------------------------------------------
+ * SIMULA ALLENAMENTO (Vista Atleta) — riusa la UI "Allenamento Oggi"
+ * ------------------------------------------------------------------- */
+async function startSimulate(athlete, schedaAttiva) {
+  if (!schedaAttiva) {
+    toast('Assegna prima una scheda attiva per poter simulare l\'allenamento.', 'error');
+    return;
+  }
+  state.profile = { id: athlete.id, nome: athlete.nome, cognome: athlete.cognome, ruolo: 'athlete' };
+  $('#simulate-athlete-name').textContent = `${athlete.nome} ${athlete.cognome}`;
+
+  setMacroView('simulate');
+  state.loadedViews.clear();
+  currentSessioneId = null;
+  await loadSchede();
+  renderView('oggi');
+  renderInfoView();
+}
+
+function exitSimulate() {
+  if (state.activeTimer) {
+    clearInterval(state.activeTimer.intervalId);
+    state.activeTimer = null;
+    $('#timer-overlay').hidden = true;
+  }
+  const athleteId = state.selectedAthlete ? state.selectedAthlete.id : null;
+  state.profile = null;
+  if (athleteId) {
+    goToAthleteDetail(athleteId);
+  } else {
+    goToDashboard();
+  }
 }
 
 /* ---------------------------------------------------------------------
@@ -351,7 +997,10 @@ function renderSessioneWorkout(sessione) {
       <h3 class="card-title">${escapeHtml(sessione.nome)}</h3>
       ${sessione.note ? `<p class="muted">${escapeHtml(sessione.note)}</p>` : ''}
     </div>
-    ${esercizi.map(exerciseCardHtml).join('')}
+    <button type="button" class="btn btn-primary btn-block" id="add-exercise-btn">+ Aggiungi Esercizio</button>
+    <div id="exercise-list-wrap" class="stack">
+      ${esercizi.map(exerciseCardHtml).join('')}
+    </div>
   `;
 
   $('#back-to-sessioni').addEventListener('click', () => {
@@ -359,8 +1008,173 @@ function renderSessioneWorkout(sessione) {
     renderOggiView();
   });
 
+  $('#add-exercise-btn').addEventListener('click', () => openAddExerciseModal(sessione, 'simulate'));
+
   esercizi.forEach((ex) => wireExerciseCard(ex, sessione));
 }
+
+/* ---------------------------------------------------------------------
+ * MODAL: + AGGIUNGI ESERCIZIO
+ * (usato sia dalla vista coach "Profilo Atleta" che dalla simulazione)
+ * ------------------------------------------------------------------- */
+function populateGruppoSelect() {
+  const sel = $('#aex-gruppo');
+  const gruppi = Object.keys(state.catalogo);
+  sel.innerHTML = '<option value="">Seleziona un gruppo…</option>'
+    + gruppi.map((g) => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join('');
+}
+
+function resetEsercizioCatalogoSelect() {
+  const sel = $('#aex-esercizio-catalogo');
+  sel.innerHTML = '<option value="">Seleziona prima un gruppo…</option>';
+  sel.disabled = true;
+}
+
+function setAexMode(mode) {
+  const overlay = $('#add-exercise-overlay');
+  overlay.dataset.mode = mode;
+  $('#aex-mode-catalogo').classList.toggle('is-active', mode === 'catalogo');
+  $('#aex-mode-custom').classList.toggle('is-active', mode === 'custom');
+  $('#aex-catalogo-fields').hidden = mode !== 'catalogo';
+  $('#aex-custom-fields').hidden = mode !== 'custom';
+}
+
+$('#aex-mode-catalogo').addEventListener('click', () => setAexMode('catalogo'));
+$('#aex-mode-custom').addEventListener('click', () => setAexMode('custom'));
+
+$('#aex-gruppo').addEventListener('change', () => {
+  const gruppo = $('#aex-gruppo').value;
+  const sel = $('#aex-esercizio-catalogo');
+  const opzioni = state.catalogo[gruppo] || [];
+
+  if (!gruppo || !opzioni.length) {
+    resetEsercizioCatalogoSelect();
+    return;
+  }
+
+  sel.innerHTML = '<option value="">Seleziona un esercizio…</option>'
+    + opzioni.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  sel.disabled = false;
+});
+
+function openAddExerciseModal(sessione, context) {
+  const overlay = $('#add-exercise-overlay');
+  const form = $('#add-exercise-form');
+  form.reset();
+  $('#aex-error').hidden = true;
+  populateGruppoSelect();
+  resetEsercizioCatalogoSelect();
+  setAexMode('catalogo');
+  overlay.hidden = false;
+  overlay.dataset.sessioneId = sessione.id;
+  overlay.dataset.context = context || 'simulate';
+  $('#aex-gruppo').focus();
+}
+
+function closeAddExerciseModal() {
+  $('#add-exercise-overlay').hidden = true;
+}
+
+function parseSerieRipetizioni(raw) {
+  // Accetta formati tipo "3x10", "4 x 8-10", "3X12" ...
+  const match = String(raw || '').match(/^\s*(\d+)\s*[xX×]\s*(.+?)\s*$/);
+  if (match) {
+    return { serie: parseInt(match[1], 10), ripetizioni: match[2].trim() };
+  }
+  return { serie: 3, ripetizioni: String(raw || '10').trim() };
+}
+
+$('#add-exercise-close').addEventListener('click', closeAddExerciseModal);
+$('#add-exercise-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'add-exercise-overlay') closeAddExerciseModal();
+});
+
+$('#add-exercise-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const overlay = $('#add-exercise-overlay');
+  const sessioneId = overlay.dataset.sessioneId;
+  const context = overlay.dataset.context || 'simulate';
+  const mode = overlay.dataset.mode || 'catalogo';
+  const errEl = $('#aex-error');
+  errEl.hidden = true;
+
+  let nome, target;
+  if (mode === 'custom') {
+    nome = $('#aex-nome').value.trim();
+    target = $('#aex-target').value.trim();
+    if (!nome) {
+      errEl.textContent = 'Inserisci il nome dell\'esercizio personalizzato.';
+      errEl.hidden = false;
+      return;
+    }
+  } else {
+    target = $('#aex-gruppo').value;
+    nome = $('#aex-esercizio-catalogo').value;
+    if (!target || !nome) {
+      errEl.textContent = 'Seleziona un gruppo muscolare e un esercizio dal catalogo.';
+      errEl.hidden = false;
+      return;
+    }
+  }
+
+  const { serie, ripetizioni } = parseSerieRipetizioni($('#aex-serie-reps').value);
+  const recupero = parseInt($('#aex-recupero').value, 10);
+  const note = $('#aex-note').value.trim();
+
+  const submitBtn = $('#aex-submit');
+  submitBtn.disabled = true;
+
+  const nuovoEsercizio = {
+    sessione_id: sessioneId,
+    nome,
+    target_muscolare: target || null,
+    serie: Number.isFinite(serie) && serie > 0 ? serie : 3,
+    ripetizioni: ripetizioni || '10',
+    tempo_recupero_secondi: Number.isFinite(recupero) && recupero >= 0 ? recupero : 90,
+    note_tecniche: note || null,
+    ordine: 999,
+  };
+
+  try {
+    const { data, error } = await sb
+      .from('fitnesstime_esercizi')
+      .insert(nuovoEsercizio)
+      .select(`
+        id, nome, target_muscolare, video_url, ordine, schema_serie, serie,
+        ripetizioni, carico_target, percentuale_1rm, rpe, rir,
+        tempo_recupero_secondi, note_tecniche
+      `)
+      .single();
+
+    if (error) throw error;
+
+    closeAddExerciseModal();
+    toast('Esercizio aggiunto ✔', 'success', 1800);
+
+    if (context === 'athlete-detail' && state.selectedAthlete) {
+      // Aggiorna lo stato locale della vista coach senza un round-trip completo
+      const sessione = findSessioneById(state.selectedAthlete, sessioneId);
+      if (sessione) sessione.fitnesstime_esercizi = [...(sessione.fitnesstime_esercizi || []), data];
+      renderAthleteDetail();
+    } else {
+      // Contesto "simulate": aggiorna la scheda dell'atleta simulato
+      const scheda = state.activeScheda;
+      const sessione = scheda && (scheda.fitnesstime_sessioni || []).find((s) => s.id === sessioneId);
+      if (sessione) {
+        sessione.fitnesstime_esercizi = [...(sessione.fitnesstime_esercizi || []), data];
+        renderSessioneWorkout(sessione);
+      } else {
+        await loadSchede();
+        renderOggiView();
+      }
+    }
+  } catch (err) {
+    errEl.textContent = 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
+    errEl.hidden = false;
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
 
 function exerciseCardHtml(ex) {
   const chips = [
@@ -425,7 +1239,7 @@ function wireExerciseCard(ex, sessione) {
       btn.disabled = true;
       try {
         if (!navigator.onLine) throw new Error('offline');
-        const { error } = await sb.rpc('fitnesstime_log_set', args);
+        const { error } = await submitWorkoutLog(args);
         if (error) throw error;
         row.classList.add('is-done');
         toast('Serie registrata ✔', 'success', 1600);
@@ -691,3 +1505,6 @@ if ('serviceWorker' in navigator) {
  * ------------------------------------------------------------------- */
 updateConnBadge();
 setAuthMode('signin');
+if (DEMO_MODE) {
+  enterDemoApp();
+}

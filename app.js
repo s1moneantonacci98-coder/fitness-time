@@ -609,10 +609,15 @@ async function goToAthleteDetail(athleteId) {
             tempo_recupero_secondi, note_tecniche
           )
         )
+      ),
+      fitnesstime_misure_bia (
+        id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg,
+        acqua_perc, grasso_viscerale, note
       )
     `)
     .eq('id', athleteId)
     .order('created_at', { referencedTable: 'fitnesstime_schede', ascending: false })
+    .order('data_rilevazione', { referencedTable: 'fitnesstime_misure_bia', ascending: false })
     .single();
 
   if (error || !data) {
@@ -630,6 +635,7 @@ async function goToAthleteDetail(athleteId) {
         fitnesstime_esercizi: (s.fitnesstime_esercizi || []).sort((a, b) => a.ordine - b.ordine),
       })),
   }));
+  data.fitnesstime_misure_bia = data.fitnesstime_misure_bia || [];
 
   state.selectedAthlete = data;
   renderAthleteDetail();
@@ -655,6 +661,8 @@ function renderAthleteDetail() {
       </button>
     </div>
 
+    ${biaSectionHtml(a)}
+
     <button type="button" class="btn btn-primary btn-block" id="assign-scheda-btn">+ Assegna Nuova Scheda</button>
 
     ${(a.fitnesstime_schede || []).length ? (a.fitnesstime_schede || []).map((scheda) => `
@@ -663,7 +671,7 @@ function renderAthleteDetail() {
           <span class="exercise-name">${escapeHtml(scheda.titolo)}</span>
           <div class="scheda-head-actions">
             <span class="chip ${scheda.attiva ? 'chip-red' : ''}">${scheda.attiva ? 'Attiva' : 'Conclusa'}</span>
-            <button type="button" class="icon-btn icon-btn-danger icon-btn-sm" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">🗑️</button>
+            <button type="button" class="icon-btn-sm icon-btn-danger" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">🗑️</button>
           </div>
         </div>
         ${scheda.obiettivo ? `<p class="muted">${escapeHtml(scheda.obiettivo)}</p>` : ''}
@@ -672,17 +680,17 @@ function renderAthleteDetail() {
           <div class="exercise-item">
             <div class="exercise-head">
               <span class="exercise-name">${escapeHtml(s.nome)}</span>
-              <button type="button" class="btn btn-ghost btn-sm" data-add-ex-sessione="${s.id}">+ Esercizio</button>
+              <button type="button" class="btn-pill-add" data-add-ex-sessione="${s.id}">+ Esercizio</button>
             </div>
             ${(s.fitnesstime_esercizi || []).length
               ? (s.fitnesstime_esercizi || []).map((ex) => `
                 <div class="exercise-row-line" data-esercizio-id="${ex.id}">
-                  <p style="margin:4px 0; font-size:14px; flex:1;">
-                    <strong>${escapeHtml(ex.nome)}</strong> — ${ex.serie}×${escapeHtml(ex.ripetizioni)}
-                    · ⏱ ${ex.tempo_recupero_secondi}s
-                    ${ex.note_tecniche ? `<br><span class="muted">💡 ${escapeHtml(ex.note_tecniche)}</span>` : ''}
-                  </p>
-                  <button type="button" class="icon-btn icon-btn-danger icon-btn-sm" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">✕</button>
+                  <div class="exercise-row-info">
+                    <span class="exercise-row-name">${escapeHtml(ex.nome)}</span>
+                    <span class="exercise-row-meta">${ex.serie} serie × ${escapeHtml(ex.ripetizioni)} reps · ⏱ ${ex.tempo_recupero_secondi}s</span>
+                    ${ex.note_tecniche ? `<span class="exercise-row-note">💡 ${escapeHtml(ex.note_tecniche)}</span>` : ''}
+                  </div>
+                  <button type="button" class="icon-btn-remove" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">✕</button>
                 </div>
               `).join('')
               : '<p class="muted" style="font-size:13px;">Nessun esercizio in questo giorno.</p>'}
@@ -696,6 +704,9 @@ function renderAthleteDetail() {
   if (simBtn) simBtn.addEventListener('click', () => startSimulate(a, schedaAttiva));
 
   $('#assign-scheda-btn').addEventListener('click', () => openNewSchedaModal(a.id));
+
+  const biaBtn = $('#new-bia-btn');
+  if (biaBtn) biaBtn.addEventListener('click', () => openBiaModal(a.id));
 
   $$('[data-delete-scheda]', el).forEach((btn) => {
     btn.addEventListener('click', (e) => {
@@ -733,6 +744,153 @@ function findSessioneById(athlete, sessioneId) {
   }
   return null;
 }
+
+/* ---------------------------------------------------------------------
+ * SEZIONE: COMPOSIZIONE CORPOREA (BIA) — profilo atleta (vista coach)
+ * ------------------------------------------------------------------- */
+function biaDeltaBadge(curr, prev, unit, invert) {
+  if (curr == null || prev == null) return '';
+  const delta = Math.round((Number(curr) - Number(prev)) * 10) / 10;
+  if (delta === 0) return '<span class="bia-delta bia-delta-flat">= invariato</span>';
+  const isImprovement = invert ? delta > 0 : delta < 0;
+  const arrow = delta > 0 ? '▲' : '▼';
+  return `<span class="bia-delta ${isImprovement ? 'bia-delta-good' : 'bia-delta-bad'}">${arrow} ${Math.abs(delta)}${unit}</span>`;
+}
+
+function biaMetricHtml(label, value, unit, deltaHtml) {
+  return `
+    <div class="bia-metric">
+      <span class="bia-metric-value">${value != null ? escapeHtml(String(value)) : '–'}${value != null ? `<small>${unit}</small>` : ''}</span>
+      <span class="bia-metric-label">${label}</span>
+      ${deltaHtml || ''}
+    </div>
+  `;
+}
+
+function biaSectionHtml(athlete) {
+  const misure = athlete.fitnesstime_misure_bia || [];
+  const ultima = misure[0] || null;
+  const precedente = misure[1] || null;
+
+  const summary = ultima ? `
+    <p class="muted" style="margin-bottom:10px;">Ultima rilevazione: ${fmtDate(ultima.data_rilevazione)}</p>
+    <div class="bia-metric-grid">
+      ${biaMetricHtml('Peso', ultima.peso_kg, 'kg', biaDeltaBadge(ultima.peso_kg, precedente && precedente.peso_kg, 'kg', false))}
+      ${biaMetricHtml('Massa Grassa', ultima.massa_grassa_perc, '%', biaDeltaBadge(ultima.massa_grassa_perc, precedente && precedente.massa_grassa_perc, '%', false))}
+      ${biaMetricHtml('Massa Magra', ultima.massa_magra_kg, 'kg', biaDeltaBadge(ultima.massa_magra_kg, precedente && precedente.massa_magra_kg, 'kg', true))}
+      ${biaMetricHtml('Idratazione', ultima.acqua_perc, '%', biaDeltaBadge(ultima.acqua_perc, precedente && precedente.acqua_perc, '%', true))}
+    </div>
+  ` : '<p class="muted" style="margin-bottom:10px;">Nessuna rilevazione BIA registrata.</p>';
+
+  const storico = misure.length ? `
+    <table class="bia-history-table">
+      <thead><tr><th>Data</th><th>Peso</th><th>% Grasso</th><th>Magra</th><th>% Acqua</th></tr></thead>
+      <tbody>
+        ${misure.map((m) => `
+          <tr>
+            <td>${fmtDate(m.data_rilevazione)}</td>
+            <td>${m.peso_kg != null ? escapeHtml(String(m.peso_kg)) : '–'} kg</td>
+            <td>${m.massa_grassa_perc != null ? escapeHtml(String(m.massa_grassa_perc)) : '–'}%</td>
+            <td>${m.massa_magra_kg != null ? escapeHtml(String(m.massa_magra_kg)) : '–'} kg</td>
+            <td>${m.acqua_perc != null ? escapeHtml(String(m.acqua_perc)) : '–'}%</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  ` : '';
+
+  return `
+    <div class="card" data-bia-section>
+      <div class="exercise-head">
+        <h3 class="card-title" style="margin-bottom:0;">📊 Composizione Corporea (BIA)</h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="new-bia-btn">+ Nuova BIA</button>
+      </div>
+      ${summary}
+      ${storico}
+    </div>
+  `;
+}
+
+/* ---------------------------------------------------------------------
+ * MODAL: + NUOVA BIA
+ * ------------------------------------------------------------------- */
+function openBiaModal(athleteId) {
+  $('#bia-form').reset();
+  $('#bia-error').hidden = true;
+  $('#bia-data').value = new Date().toISOString().slice(0, 10);
+  $('#bia-overlay').hidden = false;
+  $('#bia-overlay').dataset.athleteId = athleteId;
+  $('#bia-peso').focus();
+}
+function closeBiaModal() {
+  $('#bia-overlay').hidden = true;
+}
+
+$('#bia-close').addEventListener('click', closeBiaModal);
+$('#bia-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'bia-overlay') closeBiaModal();
+});
+
+$('#bia-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const athleteId = $('#bia-overlay').dataset.athleteId;
+  const errEl = $('#bia-error');
+  errEl.hidden = true;
+
+  const data_rilevazione = $('#bia-data').value;
+  const peso_kg = parseFloat($('#bia-peso').value);
+  const massa_grassa_perc = $('#bia-grasso').value ? parseFloat($('#bia-grasso').value) : null;
+  const massa_magra_kg = $('#bia-magra').value ? parseFloat($('#bia-magra').value) : null;
+  const acqua_perc = $('#bia-acqua').value ? parseFloat($('#bia-acqua').value) : null;
+  const grasso_viscerale = $('#bia-viscerale').value ? parseFloat($('#bia-viscerale').value) : null;
+  const note = $('#bia-note').value.trim();
+
+  if (!data_rilevazione || Number.isNaN(peso_kg)) {
+    errEl.textContent = 'Inserisci almeno data e peso.';
+    errEl.hidden = false;
+    return;
+  }
+
+  const submitBtn = $('#bia-submit');
+  submitBtn.disabled = true;
+
+  try {
+    // upsert: una rilevazione al giorno per atleta (vedi unique
+    // atleta_id/data_rilevazione in fitnesstime_migration_bia.sql) — se il
+    // coach ricompila la stessa data corregge la riga invece di duplicarla.
+    const { data, error } = await sb
+      .from('fitnesstime_misure_bia')
+      .upsert({
+        atleta_id: athleteId,
+        data_rilevazione,
+        peso_kg,
+        massa_grassa_perc,
+        massa_magra_kg,
+        acqua_perc,
+        grasso_viscerale,
+        note: note || null,
+      }, { onConflict: 'atleta_id,data_rilevazione' })
+      .select('id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note')
+      .single();
+    if (error) throw error;
+
+    closeBiaModal();
+    toast('Rilevazione BIA salvata ✔', 'success', 1800);
+
+    if (state.selectedAthlete && state.selectedAthlete.id === athleteId) {
+      const altre = (state.selectedAthlete.fitnesstime_misure_bia || [])
+        .filter((m) => m.data_rilevazione !== data.data_rilevazione);
+      state.selectedAthlete.fitnesstime_misure_bia = [...altre, data]
+        .sort((x, y) => (x.data_rilevazione < y.data_rilevazione ? 1 : -1));
+      renderAthleteDetail();
+    }
+  } catch (err) {
+    errEl.textContent = 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
+    errEl.hidden = false;
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
 
 /* ---------------------------------------------------------------------
  * GESTIONE SCHEDE / ESERCIZI (elimina, attiva, rimuovi) — vista coach

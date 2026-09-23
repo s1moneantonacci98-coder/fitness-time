@@ -253,6 +253,13 @@ main#view-app {
   padding: 6px 6px calc(6px + var(--safe-bottom));
 }
 
+/* Bug fix: senza questa regola l'attributo [hidden] sulla tabbar veniva
+   sovrascritto da ".tabbar { display:flex }" qui sopra (stessa specificita',
+   ma origine "author" prevale sullo UA stylesheet) — la barra restava
+   visibile anche in Dashboard/Profilo Atleta nonostante JS impostasse
+   correttamente #tabbar.hidden = true fuori da 'simulate'. */
+.tabbar[hidden] { display: none !important; }
+
 .tab-btn {
   flex: 1;
   display: flex;
@@ -274,24 +281,26 @@ main#view-app {
 .tab-btn.is-active { color: var(--red); background: var(--red-soft); }
 
 /* ---------------------------- SESSION / EXERCISE CARDS ---------------------------- */
-.session-card { border-left: 4px solid var(--red); }
+.session-card { border-left: 4px solid var(--red); border-radius: 14px; }
 .session-card .card-title { color: var(--text); font-size: 17px; text-transform: none; }
 
 .exercise-item {
   padding: 12px;
   background: var(--surface-2);
-  border-radius: var(--radius-sm);
+  border-radius: 12px;
   margin-bottom: 10px;
+  overflow: hidden;
 }
 .exercise-item:last-child { margin-bottom: 0; }
 
 .exercise-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   margin-bottom: 6px;
 }
+.exercise-head .exercise-name { flex: 1; min-width: 0; }
 .exercise-name { font-weight: 700; font-size: 16px; }
 .exercise-target { font-size: 12px; color: var(--text-muted); }
 
@@ -499,22 +508,106 @@ main#view-app {
   background: var(--red-soft);
 }
 .icon-btn-sm {
-  width: 40px;
-  height: 40px;
-  min-width: 36px;
-  min-height: 36px;
-  font-size: 15px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 13px;
   flex-shrink: 0;
 }
 
 .scheda-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.scheda-head-actions .chip {
+  height: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
 
 .exercise-row-line {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
 }
-.exercise-row-line:not(:last-child) { border-bottom: 1px solid var(--border); }
+.exercise-row-line:not(:last-child) { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+
+.exercise-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.exercise-row-name {
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 0.95rem;
+  overflow-wrap: break-word;
+}
+.exercise-row-meta {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+.exercise-row-note {
+  color: #94a3b8;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.icon-btn-remove {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  touch-action: manipulation;
+}
+.icon-btn-remove:hover,
+.icon-btn-remove:active {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.btn-pill-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  touch-action: manipulation;
+}
+.btn-pill-add:hover,
+.btn-pill-add:active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--text);
+}
 
 /* ---------------------------- DASHBOARD ISTRUTTORE ---------------------------- */
 main#view-dashboard, main#view-athlete-detail {
@@ -669,6 +762,59 @@ main#view-dashboard, main#view-athlete-detail {
 .toast.toast-success { border-left-color: var(--success); }
 .toast.toast-error { border-left-color: #ef4444; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---------------------------- BIA / COMPOSIZIONE CORPOREA ---------------------------- */
+.bia-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.bia-metric {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+}
+.bia-metric-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--red);
+}
+.bia-metric-value small { font-size: 12px; font-weight: 700; margin-left: 2px; color: var(--text-muted); }
+.bia-metric-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+.bia-delta {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.bia-delta-good { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
+.bia-delta-bad { background: var(--red-soft); color: #ff9d99; }
+.bia-delta-flat { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+.bia-history-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.bia-history-table th {
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.bia-history-table td { padding: 8px 4px; border-bottom: 1px solid var(--border); color: var(--text); }
+.bia-history-table tr:last-child td { border-bottom: none; }
 
 /* ---------------------------- MISC ---------------------------- */
 .empty-state { text-align: center; padding: 32px 16px; color: var(--text-muted); }

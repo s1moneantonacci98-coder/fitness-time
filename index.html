@@ -318,6 +318,48 @@
   </div>
 </div>
 
+<!-- ================= MODAL: + NUOVA BIA (Composizione Corporea) ================= -->
+<div id="bia-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Nuova rilevazione BIA">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">+ Nuova Rilevazione BIA</h3>
+      <button type="button" class="icon-btn" id="bia-close" aria-label="Chiudi">✕</button>
+    </div>
+    <form id="bia-form" class="auth-form">
+      <label class="field">
+        <span>Data rilevazione</span>
+        <input type="date" id="bia-data" name="bia-data" required>
+      </label>
+      <label class="field">
+        <span>Peso (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-peso" name="bia-peso" placeholder="Es. 78.4" required>
+      </label>
+      <label class="field">
+        <span>Massa Grassa (%)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" max="100" id="bia-grasso" name="bia-grasso" placeholder="Es. 18.5">
+      </label>
+      <label class="field">
+        <span>Massa Magra (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-magra" name="bia-magra" placeholder="Es. 63.9">
+      </label>
+      <label class="field">
+        <span>Idratazione (%)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" max="100" id="bia-acqua" name="bia-acqua" placeholder="Es. 55.2">
+      </label>
+      <label class="field">
+        <span>Grasso Viscerale</span>
+        <input type="number" inputmode="decimal" step="0.5" min="0" id="bia-viscerale" name="bia-viscerale" placeholder="Es. 7">
+      </label>
+      <label class="field">
+        <span>Note</span>
+        <input type="text" id="bia-note" name="bia-note" placeholder="Es. A digiuno, mattina…">
+      </label>
+      <p id="bia-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="bia-submit" class="btn btn-primary btn-block">Salva rilevazione</button>
+    </form>
+  </div>
+</div>
+
 <!-- ================= TOAST ================= -->
 <div id="toast-container" class="toast-container" aria-live="polite"></div>
 

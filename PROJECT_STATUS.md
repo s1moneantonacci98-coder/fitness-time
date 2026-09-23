@@ -1,6 +1,6 @@
 # Fitness Time Club — PWA & Workout Tracker — Stato progetto
 
-_Ultimo aggiornamento: 2026-09-23 (catalogo esercizi + gestione delete/update)_
+_Ultimo aggiornamento: 2026-09-23 (restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
 
 ## 1. Moduli completati e funzionanti
 
@@ -179,6 +179,60 @@ Correzioni richieste dall'uso reale in sala pesi da parte dell'istruttore (Andre
     "Profilo Atleta", non nella vista "Simula Allenamento" (che resta la vista sola-lettura +
     log serie dell'atleta, invariata salvo il nuovo modal "+ Esercizio").
 
+## 3quinquies. FIX BOTTOM BAR COACH/ADMIN + MODULO BIA (attiva ora — 2026-09-23)
+
+- **Fix bug bottom bar in vista Coach/Admin** (`style.css`): la tab bar
+  (Oggi/Schede/Storico/Info) restava visibile anche in Dashboard Istruttore
+  e nel Profilo Atleta nonostante `app.js` impostasse correttamente
+  `#tabbar.hidden = (mode !== 'simulate')` in `setMacroView()`. Causa: la
+  regola `.tabbar { display:flex; position:fixed; ... }` sovrascriveva lo
+  UA-stylesheet `[hidden] { display:none }` (stessa specificita', ma
+  origine "author" prevale su "user agent" nella cascata CSS) — mancava,
+  a differenza di `.modal-overlay[hidden]`/`.timer-overlay[hidden]`, un
+  override esplicito. Aggiunta la regola `.tabbar[hidden] { display: none
+  !important; }`. Nessuna modifica a `app.js`/`index.html` necessaria: la
+  logica di visibilita' (nascosta in dashboard/profilo, mostrata solo in
+  "Simula Allenamento") era gia' corretta lato JS.
+- **Modulo BIA / Composizione Corporea** (`fitnesstime_migration_bia.sql`,
+  applicata live sul progetto Supabase condiviso):
+  - Nuova tabella `fitnesstime_misure_bia` (atleta_id FK → profiles, data
+    di rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc,
+    grasso_viscerale, note), `unique (atleta_id, data_rilevazione)` per
+    poter correggere con un upsert una rilevazione dello stesso giorno.
+  - RLS: policy "reale" (atleta autenticato vede solo le proprie righe via
+    `fitnesstime_profile_id()`; staff accesso completo via
+    `fitnesstime_is_staff()`) + policy "demo/anon" a lettura/scrittura
+    completa (stesso perimetro e stesso pattern gia' in uso per
+    `fitnesstime_schede/sessioni/esercizi` — solo tabelle `fitnesstime_*`,
+    nessun'altra tabella del progetto condiviso toccata).
+  - Seed demo: 2 rilevazioni per **Elena Conti** a un mese di distanza,
+    con progresso realistico (peso 68.4→66.9kg, massa grassa 26.8→24.5%,
+    massa magra 50.1→50.5kg, idratazione 52.3→54.1%, viscerale 8→7) per
+    mostrare subito l'andamento nella demo.
+  - **UI profilo atleta** (`index.html`/`app.js`/`style.css`,
+    `renderAthleteDetail` → `biaSectionHtml`): nuova card "📊 Composizione
+    Corporea (BIA)" con badge dell'ultima rilevazione (Peso, % Grasso,
+    Massa Magra, Idratazione) e delta colorato rispetto alla rilevazione
+    precedente; pulsante "+ Nuova BIA" che apre un modal rapido
+    (`#bia-overlay`) e salva con `upsert` su `fitnesstime_misure_bia`;
+    tabellina storico di tutte le rilevazioni ordinate per data
+    decrescente. Aggiornamento locale dello stato dopo il salvataggio,
+    senza reload completo della vista.
+  - **Restyling UI/UX "Schede ed Esercizi"** (`renderAthleteDetail` in `app.js`,
+    `style.css`): pulsanti di rimozione esercizio ridotti a 28×28px, icona
+    minimale grigia (`#64748b`) che diventa rossa (`#ef4444`) solo su
+    hover/active, sfondo trasparente al posto del bordo rosso invasivo
+    (nuova classe `.icon-btn-remove`). Riga esercizio ristrutturata in
+    flexbox (`.exercise-row-info` / `.exercise-row-name` /
+    `.exercise-row-meta` / `.exercise-row-note`) con nome in evidenza a
+    sinistra, parametri serie/reps/recupero come testo secondario sotto, e
+    separatore sottile (`rgba(255,255,255,0.06)`). Pulsante "+ Esercizio"
+    trasformato in pillola compatta (`.btn-pill-add`). Badge "Attiva" e
+    pulsante cestino 🗑️ uniformati a 28px di altezza. Raggio di curvatura
+    coerente su `.session-card` (14px) e `.exercise-item` (12px).
+    Verificato senza overflow orizzontale a 375/390/430px (screenshot
+    Playwright).
+
 ## 4. Prossimi step prioritari
 
 1. **Deploy su Vercel**: creare/collegare il progetto Vercel al repository Git di questa
@@ -207,6 +261,7 @@ Fitness Time/
 ├── fitnesstime_schema.sql   (idempotente — ri-eseguibile nello SQL Editor Supabase)
 ├── fitnesstime_seed_data.sql (dati demo + policy RLS anon per la demo — vedi § 3bis)
 ├── fitnesstime_migration_catalogo_gestione.sql (catalogo esercizi + policy UPDATE/DELETE anon — vedi § 3quater)
+├── fitnesstime_migration_bia.sql (tabella + RLS + seed modulo BIA — vedi § 3quinquies)
 ├── PROJECT_STATUS.md        (questo file)
 ├── package.json             (script: npm test, npm run icons)
 ├── index.html

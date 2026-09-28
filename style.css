@@ -99,6 +99,12 @@ p { margin: 0 0 8px; }
   border-radius: 999px;
   font-size: 18px;
 }
+/* Bug fix: come per .tabbar[hidden] sopra, senza questa regola l'attributo
+   [hidden] su un .icon-btn (es. #back-btn) veniva sovrascritto da
+   ".icon-btn { display:grid }" qui sopra (stessa specificita', l'origine
+   "author" prevale sullo UA stylesheet) — il pulsante restava visibile
+   anche quando JS impostava correttamente .hidden = true. */
+.icon-btn[hidden] { display: none !important; }
 
 .badge {
   font-size: 11px;

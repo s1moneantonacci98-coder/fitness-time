@@ -254,10 +254,6 @@ function translateAuthError(err) {
   return msg;
 }
 
-$('#logout-btn').addEventListener('click', async () => {
-  await sb.auth.signOut();
-});
-
 sb.auth.onAuthStateChange((_event, session) => {
   if (DEMO_MODE) return; // in demo l'app non passa mai dal vero login Supabase
   if (session && session.user) {
@@ -275,7 +271,6 @@ async function enterDemoApp() {
   state.coach = DEMO_PROFILE;
 
   $('#view-auth').hidden = true;
-  $('#logout-btn').hidden = true; // nessuna sessione reale da cui uscire
 
   await loadCatalogoEsercizi();
   await goToDashboard();
@@ -305,6 +300,7 @@ $('#back-btn').addEventListener('click', () => {
 $('#simulate-exit-btn').addEventListener('click', exitSimulate);
 
 async function goToDashboard() {
+  state.selectedAthlete = null;
   setMacroView('dashboard');
   await loadAthletes();
   renderDashboard();
@@ -332,7 +328,6 @@ async function enterApp(user) {
   $('#view-auth').hidden = true;
   $('#view-app').hidden = false;
   $('#tabbar').hidden = false;
-  $('#logout-btn').hidden = false;
 
   state.loadedViews.clear();
   await loadCatalogoEsercizi();
@@ -351,7 +346,6 @@ function exitApp() {
   $('#view-auth').hidden = false;
   $('#view-app').hidden = true;
   $('#tabbar').hidden = true;
-  $('#logout-btn').hidden = true;
   $('#auth-form').reset();
   setAuthMode('signin');
 }
@@ -1070,13 +1064,8 @@ function exitSimulate() {
     state.activeTimer = null;
     $('#timer-overlay').hidden = true;
   }
-  const athleteId = state.selectedAthlete ? state.selectedAthlete.id : null;
   state.profile = null;
-  if (athleteId) {
-    goToAthleteDetail(athleteId);
-  } else {
-    goToDashboard();
-  }
+  goToDashboard();
 }
 
 /* ---------------------------------------------------------------------

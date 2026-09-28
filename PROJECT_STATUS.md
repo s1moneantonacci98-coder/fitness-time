@@ -1,6 +1,6 @@
 # Fitness Time Club — PWA & Workout Tracker — Stato progetto
 
-_Ultimo aggiornamento: 2026-09-23 (restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
+_Ultimo aggiornamento: 2026-09-23 (fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
 
 ## 1. Moduli completati e funzionanti
 
@@ -232,6 +232,19 @@ Correzioni richieste dall'uso reale in sala pesi da parte dell'istruttore (Andre
     coerente su `.session-card` (14px) e `.exercise-item` (12px).
     Verificato senza overflow orizzontale a 375/390/430px (screenshot
     Playwright).
+  - **Fix header/navigazione** (`index.html`, `app.js`, `style.css`): rimosso il
+    pulsante rotondo `#logout-btn` (icona ⏻ residua del prototipo, priva di font
+    di sistema su Windows — appariva come un riquadro/griglia; nessuna funzione
+    utile in `DEMO_MODE`), header ora essenziale (logo + freccia ←). Corretto un
+    bug CSS analogo a quello gia' risolto per `.tabbar[hidden]`:
+    `.icon-btn { display:grid }` sovrascriveva l'attributo `[hidden]`, quindi
+    `#back-btn` restava visibile anche in Dashboard nonostante JS impostasse
+    `.hidden = true` — aggiunta la regola `.icon-btn[hidden] { display:none
+    !important; }`. `exitSimulate()` ora torna sempre alla Dashboard Istruttore
+    (prima, uscendo da "Simula Allenamento", tornava al dettaglio atleta pur
+    avendo l'etichetta "← Dashboard"); `goToDashboard()` resetta
+    `state.selectedAthlete`. Verificato con smoke test (`npm test`, 12/12 check
+    locali superati) e screenshot Playwright dei tre stati dell'header.
 
 ## 4. Prossimi step prioritari
 

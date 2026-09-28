@@ -12,9 +12,13 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="grain" aria-hidden="true"></div>
 <div id="app">
 
   <!-- ================= TOP BAR ================= -->
@@ -28,7 +32,7 @@
     </div>
     <div class="topbar-actions">
       <span id="conn-badge" class="badge badge-offline" hidden>Offline</span>
-      <button id="back-btn" class="icon-btn" type="button" hidden aria-label="Indietro">←</button>
+      <button id="back-btn" class="icon-btn" type="button" hidden aria-label="Indietro"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     </div>
   </header>
 
@@ -83,9 +87,9 @@
 
     <div class="filter-pills" id="filter-pills">
       <button type="button" class="pill is-active" data-filter="tutti">Tutti<span class="pill-count" id="count-tutti">0</span></button>
-      <button type="button" class="pill" data-filter="sala_pesi">🏋️ Sala Pesi<span class="pill-count" id="count-sala_pesi">0</span></button>
-      <button type="button" class="pill" data-filter="personal">⭐ Personal<span class="pill-count" id="count-personal">0</span></button>
-      <button type="button" class="pill" data-filter="nuoto">🏊 Nuoto<span class="pill-count" id="count-nuoto">0</span></button>
+      <button type="button" class="pill" data-filter="sala_pesi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="8.5" width="3" height="7" rx="1"/><rect x="18.5" y="8.5" width="3" height="7" rx="1"/><path d="M7 9.5v5M17 9.5v5M7 12h10"/></svg> Sala Pesi<span class="pill-count" id="count-sala_pesi">0</span></button>
+      <button type="button" class="pill" data-filter="personal"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3.5l2.47 5.13 5.53.66-4.09 3.86 1.08 5.6L12 15.9l-4.99 2.85 1.08-5.6-4.09-3.86 5.53-.66z"/></svg> Personal<span class="pill-count" id="count-personal">0</span></button>
+      <button type="button" class="pill" data-filter="nuoto"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9.5c1.5 1.6 3 1.6 4.5 0s3-1.6 4.5 0 3 1.6 4.5 0 3-1.6 4.5 0"/><path d="M2.5 15c1.5 1.6 3 1.6 4.5 0s3-1.6 4.5 0 3 1.6 4.5 0 3-1.6 4.5 0"/></svg> Nuoto<span class="pill-count" id="count-nuoto">0</span></button>
     </div>
 
     <div id="athlete-list" class="stack">
@@ -104,7 +108,7 @@
   <main id="view-app" hidden>
 
     <div id="simulate-banner" class="simulate-banner" hidden>
-      <span>👁️ Stai simulando: <strong id="simulate-athlete-name">—</strong></span>
+      <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg> Stai simulando: <strong id="simulate-athlete-name">—</strong></span>
       <button type="button" class="btn btn-sm btn-secondary" id="simulate-exit-btn">← Dashboard</button>
     </div>
 
@@ -167,16 +171,16 @@
   <!-- ================= TAB BAR ================= -->
   <nav id="tabbar" class="tabbar" hidden aria-label="Navigazione principale">
     <button class="tab-btn is-active" data-target="oggi" type="button">
-      <span class="tab-icon" aria-hidden="true">🏋️</span><span>Oggi</span>
+      <span class="tab-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="8.5" width="3" height="7" rx="1"/><rect x="18.5" y="8.5" width="3" height="7" rx="1"/><path d="M7 9.5v5M17 9.5v5M7 12h10"/></svg></span><span>Oggi</span>
     </button>
     <button class="tab-btn" data-target="schede" type="button">
-      <span class="tab-icon" aria-hidden="true">📋</span><span>Schede</span>
+      <span class="tab-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16" rx="2.2"/><path d="M9 4.5V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v.5"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/></svg></span><span>Schede</span>
     </button>
     <button class="tab-btn" data-target="storico" type="button">
-      <span class="tab-icon" aria-hidden="true">📈</span><span>Storico</span>
+      <span class="tab-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-5.5 4 3L20 6"/><path d="M14.5 6H20v5.5"/></svg></span><span>Storico</span>
     </button>
     <button class="tab-btn" data-target="info" type="button">
-      <span class="tab-icon" aria-hidden="true">ℹ️</span><span>Info</span>
+      <span class="tab-icon" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/></svg></span><span>Info</span>
     </button>
   </nav>
 
@@ -201,12 +205,12 @@
   <div class="modal-card">
     <div class="modal-head">
       <h3 class="card-title">+ Aggiungi Esercizio</h3>
-      <button type="button" class="icon-btn" id="add-exercise-close" aria-label="Chiudi">✕</button>
+      <button type="button" class="icon-btn" id="add-exercise-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <form id="add-exercise-form" class="auth-form">
       <div class="aex-mode-toggle">
-        <button type="button" class="chip-toggle is-active" id="aex-mode-catalogo" data-mode="catalogo">📋 Catalogo</button>
-        <button type="button" class="chip-toggle" id="aex-mode-custom" data-mode="custom">✏️ Altro / personalizzato</button>
+        <button type="button" class="chip-toggle is-active" id="aex-mode-catalogo" data-mode="catalogo"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="4.5" cy="6.5" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="4.5" cy="17.5" r="1" fill="currentColor" stroke="none"/><path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11"/></svg> Catalogo</button>
+        <button type="button" class="chip-toggle" id="aex-mode-custom" data-mode="custom"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l0.9-3.9L16.6 4.4a1.7 1.7 0 0 1 2.4 0l0.6 0.6a1.7 1.7 0 0 1 0 2.4L7.9 19.1z"/><path d="M14.5 6.5l3 3"/></svg> Altro / personalizzato</button>
       </div>
 
       <div id="aex-catalogo-fields">
@@ -258,7 +262,7 @@
   <div class="modal-card">
     <div class="modal-head">
       <h3 class="card-title">+ Nuovo Atleta</h3>
-      <button type="button" class="icon-btn" id="new-athlete-close" aria-label="Chiudi">✕</button>
+      <button type="button" class="icon-btn" id="new-athlete-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <form id="new-athlete-form" class="auth-form">
       <label class="field">
@@ -276,9 +280,9 @@
       <label class="field">
         <span>Categoria</span>
         <select id="nat-categoria" name="nat-categoria" class="select-input">
-          <option value="sala_pesi">🏋️ Sala Pesi</option>
-          <option value="personal">⭐ Personal</option>
-          <option value="nuoto">🏊 Nuoto</option>
+          <option value="sala_pesi">Sala Pesi</option>
+          <option value="personal">Personal</option>
+          <option value="nuoto">Nuoto</option>
         </select>
       </label>
       <label class="field">
@@ -296,7 +300,7 @@
   <div class="modal-card">
     <div class="modal-head">
       <h3 class="card-title">+ Assegna Nuova Scheda</h3>
-      <button type="button" class="icon-btn" id="new-scheda-close" aria-label="Chiudi">✕</button>
+      <button type="button" class="icon-btn" id="new-scheda-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <form id="new-scheda-form" class="auth-form">
       <label class="field">
@@ -322,7 +326,7 @@
   <div class="modal-card">
     <div class="modal-head">
       <h3 class="card-title">+ Nuova Rilevazione BIA</h3>
-      <button type="button" class="icon-btn" id="bia-close" aria-label="Chiudi">✕</button>
+      <button type="button" class="icon-btn" id="bia-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <form id="bia-form" class="auth-form">
       <label class="field">

@@ -1,6 +1,6 @@
 # Fitness Time Club — PWA & Workout Tracker — Stato progetto
 
-_Ultimo aggiornamento: 2026-09-23 (fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
+_Ultimo aggiornamento: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
 
 ## 1. Moduli completati e funzionanti
 
@@ -245,6 +245,67 @@ Correzioni richieste dall'uso reale in sala pesi da parte dell'istruttore (Andre
     avendo l'etichetta "← Dashboard"); `goToDashboard()` resetta
     `state.selectedAthlete`. Verificato con smoke test (`npm test`, 12/12 check
     locali superati) e screenshot Playwright dei tre stati dell'header.
+
+## 3sexies. RESTYLING GRAFICO COMPLETO (attivo ora — 2026-09-28)
+
+Richiesta dell'utente: l'app non doveva "sembrare fatta con l'IA" ne' contenere
+errori grafici, essendo nessun login/onboarding ancora attivo (`DEMO_MODE`) e
+quindi ogni schermata modificabile liberamente senza vincoli di dati reali.
+Intervento solo su presentazione (`index.html`, `style.css`, `app.js`),
+nessuna modifica a logica, query Supabase o schema.
+
+- **Tipografia**: aggiunta coppia di font via Google Fonts (`index.html`,
+  `<link>` con `preconnect`) — **Bebas Neue** (condensato, stile cartellonistica
+  da palestra vera) per titoli, numeri grandi (stat, timer, misure BIA) e il
+  logotipo, **Manrope** per tutta l'interfaccia. Prima: solo font di sistema
+  generico (`-apple-system, Segoe UI, ...`), lo stesso stack di qualunque
+  dashboard generata automaticamente.
+- **Palette colori**: sostituito il rosso "Material Design" (#e53935) su nero
+  bluastro (#0d0f12) — combinazione riconoscibile come default da tool
+  generativi — con una palette calda proprietaria: ember/corallo (#ff5136),
+  oro (#e6b04d) come accento secondario, acqua (#55c2b8) per la categoria
+  Nuoto, fondo bruno-nero (#14110f) invece di nero-blu. Aggiunta una grana
+  fotografica sottilissima (`.grain`, SVG noise via CSS, nuovo `<div>` in
+  `index.html`) per rompere la piattezza del nero puro.
+- **Icone**: rimosse **tutte** le emoji usate come icone UI (🏋️📋📈ℹ️⭐🏊👁️✏️🔍
+  📞💬🗑️💡📊🗂️✕) sia in `index.html` che in `app.js`, sostituite con un set di
+  ~18 icone SVG inline coerenti (linea, `stroke="currentColor"`, quindi
+  ereditano il colore del componente) definite in `app.js` (`ICONS` +
+  funzione `icon(nome, classe)`) e duplicate inline dove servivano in markup
+  statico. Motivo doppio: (1) le emoji rendevano l'app riconoscibile come
+  "generata", (2) su Windows alcune emoji (vedi fix `#logout-btn` del
+  2026-09-23) renderizzano come quadratini per mancanza del font Segoe UI
+  Emoji in certi contesti — le SVG risolvono entrambi i problemi.
+- **Componenti**: pillole filtro dashboard trasformate da "bubble" colorata
+  (pattern tipico da dashboard SaaS generica) a tab con sottolineatura;
+  badge categoria ridisegnati con icona+dot invece di pillola piena;
+  `.session-card` con striscia accento ember→oro in cima invece del bordo
+  laterale piatto; pulsanti primari con gradiente + bagliore colorato +
+  highlight interno per profondità tattile; toggle "Catalogo/Personalizzato"
+  nel modal esercizio trasformato in segmented control; card con leggero
+  gradiente e ombra invece di colore piatto.
+- **Regola CSS consolidata**: le 3 regole di bug-fix sparse (`.tabbar[hidden]`,
+  `.icon-btn[hidden]`, `.modal-overlay[hidden]`/`.timer-overlay[hidden]`/
+  `.simulate-banner[hidden]` gia' con `!important` inline) sostituite da
+  un'unica regola globale `[hidden] { display: none !important; }` in cima a
+  `style.css` — stessa causa (specificita' "author" vs UA-stylesheet), fix
+  valido per ogni elemento presente e futuro invece di doverlo ripetere ad
+  ogni nuovo componente.
+- **Service Worker**: `CACHE_VERSION` in `sw.js` portato a `fitnesstime-v2`
+  per forzare l'aggiornamento della cache app-shell sui dispositivi che
+  avevano gia' installato la PWA con la grafica precedente.
+- **Verifica**: `npm test` — 12/12 controlli statici superati (sintassi,
+  coerenza id, asset dichiarati); i soli 2 controlli di rete falliscono per
+  mancata risoluzione DNS del terminale bridge usato in questa sessione verso
+  Supabase, non per codice (stesso comportamento gia' noto/documentato per il
+  container cloud). QA visiva completa con Playwright headless (screenshot di
+  dashboard, filtri, dettaglio atleta, BIA, simulazione allenamento, timer di
+  recupero, tutte le modali, storico, info, login/registrazione) usando dati
+  Supabase finti iniettati via intercettazione di rete — nessun cambiamento
+  di comportamento rilevato, solo presentazione.
+- **Non toccato**: `DEMO_MODE`, query/RPC Supabase, RLS, schema, logica di
+  business, struttura dati. Nessun `id`/`data-*` referenziato da `app.js` e'
+  stato rinominato.
 
 ## 4. Prossimi step prioritari
 

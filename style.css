@@ -1,33 +1,62 @@
 /* =====================================================================
    Fitness Time Club — Design System
    Dark mode ad alto contrasto per uso in sala pesi.
+   Palette calda (ember/oro) + tipografia doppia (Bebas Neue per i numeri
+   e i titoli, Manrope per l'interfaccia) — identità da palestra vera,
+   non da dashboard generica.
    ===================================================================== */
 
+/* Qualunque cosa porti l'attributo [hidden] deve sparire per davvero,
+   qui e in ogni componente futuro: l'origine "author" di questo foglio
+   ha sempre la meglio sullo UA-stylesheet a parità di specificità, quindi
+   senza questa regola basta una sola dichiarazione display altrove
+   (.icon-btn, .tabbar, .modal-overlay, ...) per far restare visibile un
+   elemento che JS ha nascosto. Una regola sola, in cima, vale per tutti. */
+[hidden] { display: none !important; }
+
 :root {
-  --bg: #0d0f12;
-  --bg-deep: #08090a;
-  --surface: #15171b;
-  --surface-2: #1c1f24;
-  --border: #262a30;
+  --bg: #14110f;
+  --bg-deep: #0b0a08;
+  --surface: #1d1916;
+  --surface-2: #26211d;
+  --surface-3: #322b26;
+  --border: #3a322c;
+  --border-soft: rgba(255, 255, 255, 0.06);
 
-  --red: #e53935;
-  --red-dark: #d32f2f;
-  --red-soft: rgba(229, 57, 53, 0.16);
+  --ember: #ff5136;
+  --ember-dark: #d63c26;
+  --ember-soft: rgba(255, 81, 54, 0.15);
+  --ember-glow: rgba(255, 81, 54, 0.35);
 
-  --text: #ffffff;
-  --text-muted: #a0aec0;
-  --text-faint: #6b7280;
+  --gold: #e6b04d;
+  --gold-soft: rgba(230, 176, 77, 0.15);
+  --gold-dark: #a9782b;
 
-  --success: #22c55e;
-  --warning: #f59e0b;
+  --aqua: #55c2b8;
+  --aqua-soft: rgba(85, 194, 184, 0.15);
+  --aqua-dark: #1f7d76;
 
-  --radius-sm: 10px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --text: #f4ede4;
+  --text-muted: #b2a89d;
+  --text-faint: #786e64;
+
+  --success: #4fb84a;
+  --success-soft: rgba(79, 184, 74, 0.16);
+  --warning: var(--gold);
+
+  --font-display: 'Bebas Neue', 'Arial Narrow', sans-serif;
+  --font-body: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 26px;
   --tap-min: 52px;
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 24px -18px rgba(0, 0, 0, 0.8);
+  --shadow-pop: 0 18px 40px -16px rgba(0, 0, 0, 0.65);
 
   color-scheme: dark;
 }
@@ -39,7 +68,7 @@ html, body {
   padding: 0;
   background: var(--bg-deep);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
@@ -47,9 +76,23 @@ html, body {
 body {
   min-height: 100vh;
   min-height: 100dvh;
+  position: relative;
 }
 
-button, input {
+/* Grana sottile fissa: rompe la piattezza del nero puro senza costare
+   in leggibilità. Puramente decorativa, sotto ogni contenuto reale. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
+}
+
+button, input, select {
   font-family: inherit;
   color: inherit;
 }
@@ -58,12 +101,22 @@ h1, h2, h3 { margin: 0 0 8px; line-height: 1.2; }
 p { margin: 0 0 8px; }
 .muted { color: var(--text-muted); font-size: 14px; }
 
+.icon {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.15em;
+  flex-shrink: 0;
+}
+
 #app {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh;
   background: var(--bg);
+  position: relative;
+  z-index: 1;
 }
 
 /* ---------------------------- TOP BAR ---------------------------- */
@@ -75,15 +128,21 @@ p { margin: 0 0 8px; }
   align-items: center;
   justify-content: space-between;
   padding: calc(var(--safe-top) + 12px) 16px 12px;
-  background: var(--bg-deep);
+  background: linear-gradient(180deg, var(--bg-deep) 80%, rgba(11, 10, 8, 0.97));
   border-bottom: 1px solid var(--border);
 }
 
 .brand { display: flex; align-items: center; gap: 10px; }
-.brand-logo { width: 34px; height: 34px; border-radius: 9px; }
-.brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.brand-text strong { font-size: 16px; letter-spacing: 0.2px; }
-.brand-text span { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+.brand-logo { width: 36px; height: 36px; border-radius: 10px; box-shadow: 0 0 0 1px var(--border-soft), 0 6px 14px -8px rgba(255, 81, 54, 0.5); }
+.brand-text { display: flex; flex-direction: column; line-height: 1; }
+.brand-text strong {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.5px;
+  font-weight: 400;
+  line-height: 1;
+}
+.brand-text span { font-size: 10px; color: var(--gold); text-transform: uppercase; letter-spacing: 1.4px; font-weight: 700; margin-top: 3px; }
 
 .topbar-actions { display: flex; align-items: center; gap: 10px; }
 
@@ -97,14 +156,10 @@ p { margin: 0 0 8px; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
-  font-size: 18px;
+  color: var(--text-muted);
 }
-/* Bug fix: come per .tabbar[hidden] sopra, senza questa regola l'attributo
-   [hidden] su un .icon-btn (es. #back-btn) veniva sovrascritto da
-   ".icon-btn { display:grid }" qui sopra (stessa specificita', l'origine
-   "author" prevale sullo UA stylesheet) — il pulsante restava visibile
-   anche quando JS impostava correttamente .hidden = true. */
-.icon-btn[hidden] { display: none !important; }
+.icon-btn .icon { width: 19px; height: 19px; }
+.icon-btn:active { background: var(--surface-2); color: var(--text); }
 
 .badge {
   font-size: 11px;
@@ -114,7 +169,7 @@ p { margin: 0 0 8px; }
   padding: 5px 10px;
   border-radius: 999px;
 }
-.badge-offline { background: var(--warning); color: #1a1300; }
+.badge-offline { background: var(--gold); color: #201400; }
 
 /* ---------------------------- LAYOUT / VIEWS ---------------------------- */
 main#view-app {
@@ -124,7 +179,6 @@ main#view-app {
 }
 
 .view { animation: fade-in 0.18s ease-out; }
-.view[hidden] { display: none !important; }
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
@@ -132,27 +186,30 @@ main#view-app {
 }
 
 .view-title {
-  font-size: 22px;
-  font-weight: 800;
-  margin: 4px 0 16px;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  margin: 2px 0 16px;
 }
 
 .stack { display: flex; flex-direction: column; gap: 12px; }
 
 /* ---------------------------- CARDS ---------------------------- */
 .card {
-  background: var(--surface);
+  background: linear-gradient(165deg, var(--surface) 0%, var(--surface) 65%, var(--surface-2) 130%);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 16px;
+  box-shadow: var(--shadow-card);
 }
 
 .card-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 1.1px;
   margin-bottom: 10px;
 }
 
@@ -163,6 +220,9 @@ main#view-app {
   align-items: center;
   justify-content: center;
   padding: calc(var(--safe-top) + 24px) 20px calc(var(--safe-bottom) + 24px);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 81, 54, 0.14), transparent 60%),
+    var(--bg-deep);
 }
 
 .auth-card {
@@ -171,16 +231,28 @@ main#view-app {
   text-align: center;
 }
 
-.auth-logo { width: 84px; height: 84px; border-radius: 20px; margin-bottom: 16px; }
-.auth-card h1 { font-size: 24px; font-weight: 800; }
+.auth-logo {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 0 0 1px var(--border-soft), 0 16px 32px -14px rgba(255, 81, 54, 0.55);
+}
+.auth-card h1 {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 400;
+  letter-spacing: 0.4px;
+}
 
 .auth-form { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; text-align: left; }
 
 .signup-fields { display: flex; flex-direction: column; gap: 14px; }
 
-.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); font-weight: 600; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .field input,
+.field select,
 .pr-lookup input {
   min-height: var(--tap-min);
   padding: 0 14px;
@@ -189,20 +261,25 @@ main#view-app {
   border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 16px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
-.field input:focus, .pr-lookup input:focus {
+.field input:focus, .pr-lookup input:focus, .field select:focus {
   outline: none;
-  border-color: var(--red);
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px var(--ember-soft);
 }
 
 .form-error {
-  background: var(--red-soft);
-  color: #ff9d99;
-  border: 1px solid var(--red-dark);
+  background: var(--ember-soft);
+  color: #ffb3a6;
+  border: 1px solid var(--ember-dark);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-size: 14px;
+  font-weight: 600;
 }
 
 /* ---------------------------- BUTTONS ---------------------------- */
@@ -211,27 +288,39 @@ main#view-app {
   padding: 0 20px;
   border-radius: var(--radius-sm);
   border: none;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  transition: transform 0.06s ease, opacity 0.15s ease;
+  transition: transform 0.06s ease, filter 0.15s ease, opacity 0.15s ease;
   touch-action: manipulation;
 }
+.btn .icon { width: 17px; height: 17px; }
 .btn:active { transform: scale(0.97); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-block { width: 100%; }
 
-.btn-primary { background: var(--red); color: #fff; }
-.btn-primary:active { background: var(--red-dark); }
+.btn-primary {
+  background: linear-gradient(165deg, #ff6a4f, var(--ember) 55%, var(--ember-dark));
+  color: #1a0805;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 22px -10px var(--ember-glow);
+}
+.btn-primary:active { filter: brightness(0.94); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
 
-.btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:active { background: var(--surface-3); }
 
 .btn-ghost { background: transparent; color: var(--text-muted); }
+.btn-ghost:active { color: var(--text); }
 
 .btn-round {
   width: var(--tap-min);
@@ -244,7 +333,7 @@ main#view-app {
   padding: 0;
 }
 
-.btn-sm { min-height: 40px; padding: 0 14px; font-size: 14px; }
+.btn-sm { min-height: 40px; padding: 0 14px; font-size: 13px; }
 
 /* ---------------------------- TAB BAR ---------------------------- */
 .tabbar {
@@ -259,40 +348,50 @@ main#view-app {
   padding: 6px 6px calc(6px + var(--safe-bottom));
 }
 
-/* Bug fix: senza questa regola l'attributo [hidden] sulla tabbar veniva
-   sovrascritto da ".tabbar { display:flex }" qui sopra (stessa specificita',
-   ma origine "author" prevale sullo UA stylesheet) — la barra restava
-   visibile anche in Dashboard/Profilo Atleta nonostante JS impostasse
-   correttamente #tabbar.hidden = true fuori da 'simulate'. */
-.tabbar[hidden] { display: none !important; }
-
 .tab-btn {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 8px 0;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0 6px;
   background: transparent;
   border: none;
+  border-top: 2px solid transparent;
   color: var(--text-faint);
-  font-size: 11px;
-  font-weight: 700;
-  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   min-height: var(--tap-min);
+  transition: color 0.15s ease;
 }
 
-.tab-icon { font-size: 22px; line-height: 1; }
+.tab-icon { width: 21px; height: 21px; display: inline-flex; }
+.tab-icon .icon { width: 100%; height: 100%; }
 
-.tab-btn.is-active { color: var(--red); background: var(--red-soft); }
+.tab-btn.is-active { color: var(--ember); border-top-color: var(--ember); }
 
 /* ---------------------------- SESSION / EXERCISE CARDS ---------------------------- */
-.session-card { border-left: 4px solid var(--red); border-radius: 14px; }
-.session-card .card-title { color: var(--text); font-size: 17px; text-transform: none; }
+.session-card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.session-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ember), var(--gold));
+}
+.session-card .card-title { color: var(--text); font-size: 18px; text-transform: none; letter-spacing: 0; font-weight: 800; }
 
 .exercise-item {
   padding: 12px;
   background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   margin-bottom: 10px;
   overflow: hidden;
@@ -307,8 +406,8 @@ main#view-app {
   margin-bottom: 6px;
 }
 .exercise-head .exercise-name { flex: 1; min-width: 0; }
-.exercise-name { font-weight: 700; font-size: 16px; }
-.exercise-target { font-size: 12px; color: var(--text-muted); }
+.exercise-name { font-weight: 800; font-size: 16px; }
+.exercise-target { font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; }
 
 .exercise-meta {
   display: flex;
@@ -318,15 +417,19 @@ main#view-app {
 }
 
 .chip {
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--bg-deep);
   border: 1px solid var(--border);
   color: var(--text-muted);
 }
-.chip-red { background: var(--red-soft); color: #ff9d99; border-color: var(--red-dark); }
+.chip .icon { width: 12px; height: 12px; margin-right: 4px; }
+.chip-red { background: var(--ember-soft); color: #ffb3a6; border-color: var(--ember-dark); }
 
 .set-log-row {
   display: grid;
@@ -336,7 +439,8 @@ main#view-app {
   margin-bottom: 6px;
 }
 .set-log-row span.set-num {
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 18px;
   color: var(--text-muted);
   text-align: center;
 }
@@ -349,59 +453,71 @@ main#view-app {
   color: var(--text);
   text-align: center;
   font-size: 16px;
+  font-weight: 700;
   padding: 0 4px;
 }
-.set-log-row input:focus { outline: none; border-color: var(--red); }
-.set-log-row .btn-round { width: 44px; height: 44px; font-size: 16px; }
+.set-log-row input:focus { outline: none; border-color: var(--ember); }
+.set-log-row .btn-round { width: 44px; height: 44px; }
+.set-log-row .btn-round .icon { width: 18px; height: 18px; }
 .set-log-row.is-done .btn-round { background: var(--success); color: #06210f; border-color: var(--success); }
 
 .set-log-legend {
   display: grid;
   grid-template-columns: 44px 1fr 1fr 1fr auto;
   gap: 6px;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-faint);
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.3px;
   margin-bottom: 6px;
 }
 
 /* ---------------------------- STAT / STORICO ---------------------------- */
 .stat-row { display: flex; gap: 16px; }
 .stat { flex: 1; text-align: center; }
-.stat-value { display: block; font-size: 28px; font-weight: 800; color: var(--red); }
-.stat-label { font-size: 12px; color: var(--text-muted); }
+.stat-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--ember);
+  font-variant-numeric: tabular-nums;
+}
+.stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; margin-top: 4px; display: inline-block; }
 
 .pr-lookup { display: flex; gap: 8px; margin-bottom: 10px; }
 .pr-lookup input { flex: 1; }
 .pr-result { margin: 0; }
-.pr-result.has-value { color: var(--text); font-weight: 700; }
+.pr-result.has-value { color: var(--text); font-weight: 800; font-size: 16px; }
 
 .log-day-group { margin-bottom: 4px; }
 .log-day-header {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold);
   margin: 4px 0 8px;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.6px;
 }
 .log-row {
   display: flex;
   justify-content: space-between;
   padding: 10px 12px;
   background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   margin-bottom: 6px;
   font-size: 14px;
 }
 .log-row .log-exercise { font-weight: 700; }
-.log-row .log-detail { color: var(--text-muted); }
+.log-row .log-detail { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* ---------------------------- INFO PALESTRA ---------------------------- */
 .info-hours-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-.info-hours-table td { padding: 8px 0; border-bottom: 1px solid var(--border); }
-.info-hours-table td:last-child { text-align: right; color: var(--text-muted); }
+.info-hours-table td { padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-weight: 600; }
+.info-hours-table td:last-child { text-align: right; color: var(--text-muted); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .course-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 
@@ -410,35 +526,36 @@ main#view-app {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: rgba(8, 9, 10, 0.94);
+  background: rgba(8, 7, 6, 0.94);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   backdrop-filter: blur(4px);
 }
-.timer-overlay[hidden] { display: none !important; }
 
 .timer-card { width: 100%; max-width: 340px; text-align: center; }
 .timer-label {
   display: block;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 1px;
   margin-bottom: 8px;
 }
 .timer-display {
-  font-size: 88px;
-  font-weight: 800;
-  color: var(--red);
+  font-family: var(--font-display);
+  font-size: 104px;
+  font-weight: 400;
+  color: var(--ember);
   font-variant-numeric: tabular-nums;
   margin-bottom: 24px;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 40px var(--ember-glow);
 }
-.timer-display.is-warning { color: var(--warning); animation: pulse 1s ease-in-out infinite; }
-@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+.timer-display.is-warning { color: var(--gold); animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
 .timer-controls {
   display: flex;
@@ -447,80 +564,92 @@ main#view-app {
   gap: 14px;
   margin-bottom: 18px;
 }
-.timer-controls .btn-primary { width: 88px; height: 88px; border-radius: 999px; font-size: 16px; }
+.timer-controls .btn-primary { width: 92px; height: 92px; border-radius: 999px; font-size: 15px; }
 
 /* ---------------------------- MODAL (+ AGGIUNGI ESERCIZIO) ---------------------------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 55;
-  background: rgba(8, 9, 10, 0.86);
+  background: rgba(8, 7, 6, 0.86);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 0;
   backdrop-filter: blur(4px);
 }
-.modal-overlay[hidden] { display: none !important; }
 
 .modal-card {
   width: 100%;
   max-width: 480px;
   max-height: 90dvh;
   overflow-y: auto;
-  background: var(--surface);
+  background: linear-gradient(165deg, var(--surface) 0%, var(--surface-2) 140%);
   border: 1px solid var(--border);
+  border-bottom: none;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 20px 20px calc(20px + var(--safe-bottom));
+  padding: 22px 20px calc(20px + var(--safe-bottom));
+  box-shadow: var(--shadow-pop);
 }
 
 @media (min-width: 640px) {
   .modal-overlay { align-items: center; }
-  .modal-card { border-radius: var(--radius-lg); }
+  .modal-card { border-radius: var(--radius-lg); border-bottom: 1px solid var(--border); }
 }
 
 .modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
-.modal-head .card-title { margin-bottom: 0; }
+.modal-head .card-title { margin-bottom: 0; font-size: 16px; color: var(--text); text-transform: none; letter-spacing: 0; }
+.modal-head .icon-btn { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+.modal-head .icon-btn .icon { width: 15px; height: 15px; }
 
-/* ---- Modal "+ Esercizio": toggle catalogo / personalizzato ---- */
+/* ---- Modal "+ Esercizio": toggle catalogo / personalizzato (segmented) ---- */
 .aex-mode-toggle {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   margin-bottom: 4px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
 }
 .chip-toggle {
   flex: 1;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  min-height: 42px;
+  padding: 0 8px;
+  border-radius: 9px;
+  background: transparent;
+  border: none;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   cursor: pointer;
 }
-.chip-toggle.is-active { background: var(--red-soft); color: #ff9d99; border-color: var(--red-dark); }
+.chip-toggle .icon { width: 14px; height: 14px; }
+.chip-toggle.is-active { background: var(--ember-soft); color: #ffb3a6; }
 
 /* ---------------------------- ICONE PERICOLO (elimina/rimuovi) ---------------------------- */
 .icon-btn-danger {
-  color: #ff9d99;
-  border-color: var(--red-dark);
-  background: var(--red-soft);
+  color: #ffb3a6;
+  border-color: var(--ember-dark);
+  background: var(--ember-soft);
 }
 .icon-btn-sm {
   width: 28px;
   height: 28px;
   min-width: 28px;
   min-height: 28px;
-  font-size: 13px;
   flex-shrink: 0;
 }
+.icon-btn-sm .icon { width: 13px; height: 13px; }
 
 .scheda-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .scheda-head-actions .chip {
@@ -538,7 +667,7 @@ main#view-app {
   gap: 10px;
   padding: 10px 0;
 }
-.exercise-row-line:not(:last-child) { border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.exercise-row-line:not(:last-child) { border-bottom: 1px solid var(--border-soft); }
 
 .exercise-row-info {
   flex: 1;
@@ -548,21 +677,27 @@ main#view-app {
   gap: 3px;
 }
 .exercise-row-name {
-  color: #f8fafc;
-  font-weight: 600;
+  color: var(--text);
+  font-weight: 700;
   font-size: 0.95rem;
   overflow-wrap: break-word;
 }
 .exercise-row-meta {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.8rem;
   line-height: 1.3;
+  font-variant-numeric: tabular-nums;
 }
+.exercise-row-meta .icon { width: 11px; height: 11px; margin: 0 1px 0 3px; }
 .exercise-row-note {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.78rem;
   line-height: 1.3;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
 }
+.exercise-row-note .icon { width: 12px; height: 12px; margin-top: 2px; color: var(--gold); flex-shrink: 0; }
 
 .icon-btn-remove {
   width: 28px;
@@ -577,17 +712,16 @@ main#view-app {
   border: none;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
-  color: #64748b;
-  font-size: 14px;
-  line-height: 1;
+  color: var(--text-faint);
   cursor: pointer;
   transition: color 0.15s ease, background-color 0.15s ease;
   touch-action: manipulation;
 }
+.icon-btn-remove .icon { width: 13px; height: 13px; }
 .icon-btn-remove:hover,
 .icon-btn-remove:active {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.12);
+  color: #ff8a7a;
+  background: var(--ember-soft);
 }
 
 .btn-pill-add {
@@ -595,13 +729,13 @@ main#view-app {
   align-items: center;
   gap: 4px;
   min-height: 0;
-  padding: 4px 10px;
+  padding: 5px 11px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   white-space: nowrap;
   flex-shrink: 0;
   cursor: pointer;
@@ -610,9 +744,9 @@ main#view-app {
 }
 .btn-pill-add:hover,
 .btn-pill-add:active {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: var(--text);
+  background: var(--ember-soft);
+  border-color: var(--ember-dark);
+  color: #ffb3a6;
 }
 
 /* ---------------------------- DASHBOARD ISTRUTTORE ---------------------------- */
@@ -635,14 +769,16 @@ main#view-dashboard, main#view-athlete-detail {
   width: 100%;
   min-height: var(--tap-min);
   padding: 0 14px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
 }
-.search-input:focus { outline: none; border-color: var(--red); }
+.search-input::placeholder { color: var(--text-faint); font-weight: 500; }
+.search-input:focus { outline: none; border-color: var(--ember); box-shadow: 0 0 0 3px var(--ember-soft); }
 
 .select-input {
   min-height: var(--tap-min);
@@ -652,15 +788,20 @@ main#view-dashboard, main#view-athlete-detail {
   border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 16px;
+  font-weight: 600;
 }
 
+/* Filtri dashboard: tab con sottolineatura invece della classica pillola
+   colorata da "dashboard SaaS generica" — piu' simile a una vera barra
+   di navigazione di sezione. */
 .filter-pills {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   overflow-x: auto;
   padding-bottom: 4px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
   scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
 }
 .filter-pills::-webkit-scrollbar { display: none; }
 
@@ -669,61 +810,74 @@ main#view-dashboard, main#view-athlete-detail {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 9px 14px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
+  padding: 10px 12px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-faint);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   white-space: nowrap;
   cursor: pointer;
+  margin-bottom: -1px;
 }
-.pill.is-active { background: var(--red-soft); color: #ff9d99; border-color: var(--red-dark); }
+.pill .icon { width: 14px; height: 14px; }
+.pill.is-active { color: var(--text); border-bottom-color: var(--ember); }
 .pill-count {
-  background: rgba(255,255,255,0.1);
+  background: var(--surface-2);
+  color: var(--text-faint);
   border-radius: 999px;
   padding: 1px 7px;
   font-size: 11px;
+  font-weight: 700;
 }
-.pill.is-active .pill-count { background: rgba(255,255,255,0.18); }
+.pill.is-active .pill-count { background: var(--ember-soft); color: #ffb3a6; }
 
 .athlete-card {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px;
+  cursor: pointer;
+  transition: transform 0.08s ease, border-color 0.15s ease;
 }
+.athlete-card:active { transform: scale(0.985); border-color: var(--border); }
 .athlete-avatar {
   width: 44px;
   height: 44px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: linear-gradient(165deg, var(--surface-3), var(--surface-2));
+  border: 1px solid var(--border);
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 16px;
-  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  color: var(--gold);
   flex-shrink: 0;
 }
 .athlete-info { flex: 1; min-width: 0; }
-.athlete-name { font-weight: 700; font-size: 16px; }
-.athlete-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; align-items: center; }
+.athlete-name { font-weight: 800; font-size: 16px; }
+.athlete-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; align-items: center; }
 
 .badge-categoria {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 10.5px;
   font-weight: 800;
-  padding: 3px 9px;
-  border-radius: 999px;
+  padding: 4px 9px 4px 7px;
+  border-radius: 7px;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
 }
-.badge-categoria.cat-sala_pesi { background: var(--red-soft); color: #ff9d99; border: 1px solid var(--red-dark); }
-.badge-categoria.cat-personal { background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid #b45309; }
-.badge-categoria.cat-nuoto { background: rgba(34, 211, 238, 0.16); color: #67e8f9; border: 1px solid #0e7490; }
+.badge-categoria .icon { width: 11px; height: 11px; margin-right: 4px; }
+.badge-categoria.cat-sala_pesi { background: var(--ember-soft); color: #ffb3a6; border: 1px solid var(--ember-dark); }
+.badge-categoria.cat-personal { background: var(--gold-soft); color: var(--gold); border: 1px solid var(--gold-dark); }
+.badge-categoria.cat-nuoto { background: var(--aqua-soft); color: var(--aqua); border: 1px solid var(--aqua-dark); }
 
-.scheda-status { font-size: 12px; color: var(--text-muted); }
-.scheda-status.has-scheda { color: var(--success); font-weight: 600; }
+.scheda-status { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.scheda-status.has-scheda { color: var(--success); font-weight: 700; }
 
 /* ---------------------------- SIMULATE BANNER ---------------------------- */
 .simulate-banner {
@@ -731,16 +885,16 @@ main#view-dashboard, main#view-athlete-detail {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  background: var(--red-soft);
-  border: 1px solid var(--red-dark);
+  background: var(--gold-soft);
+  border: 1px solid var(--gold-dark);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   margin-bottom: 14px;
   font-size: 13px;
-  font-weight: 600;
-  color: #ff9d99;
+  font-weight: 700;
+  color: var(--gold);
 }
-.simulate-banner[hidden] { display: none !important; }
+.simulate-banner .icon { width: 14px; height: 14px; margin-right: 2px; }
 
 /* ---------------------------- TOAST ---------------------------- */
 .toast-container {
@@ -757,12 +911,12 @@ main#view-dashboard, main#view-athlete-detail {
 .toast {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 4px solid var(--red);
+  border-left: 4px solid var(--ember);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
   font-size: 14px;
-  font-weight: 600;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  font-weight: 700;
+  box-shadow: var(--shadow-pop);
   animation: toast-in 0.2s ease-out;
 }
 .toast.toast-success { border-left-color: var(--success); }
@@ -778,53 +932,65 @@ main#view-dashboard, main#view-athlete-detail {
 }
 .bia-metric {
   background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   padding: 12px;
   text-align: center;
 }
 .bia-metric-value {
   display: block;
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--red);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--ember);
+  font-variant-numeric: tabular-nums;
 }
-.bia-metric-value small { font-size: 12px; font-weight: 700; margin-left: 2px; color: var(--text-muted); }
+.bia-metric-value small { font-size: 12px; font-weight: 700; font-family: var(--font-body); margin-left: 2px; color: var(--text-muted); }
 .bia-metric-label {
   display: block;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
+  font-weight: 700;
   margin-top: 2px;
 }
 .bia-delta {
   display: inline-block;
   margin-top: 6px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   padding: 2px 8px;
   border-radius: 999px;
 }
-.bia-delta-good { background: rgba(34, 197, 94, 0.16); color: #4ade80; }
-.bia-delta-bad { background: var(--red-soft); color: #ff9d99; }
-.bia-delta-flat { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+.bia-delta-good { background: var(--success-soft); color: #7ed079; }
+.bia-delta-bad { background: var(--ember-soft); color: #ffb3a6; }
+.bia-delta-flat { background: rgba(255, 255, 255, 0.07); color: var(--text-muted); }
 
 .bia-history-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
 .bia-history-table th {
   text-align: left;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
+  font-weight: 800;
   padding: 6px 4px;
   border-bottom: 1px solid var(--border);
 }
-.bia-history-table td { padding: 8px 4px; border-bottom: 1px solid var(--border); color: var(--text); }
+.bia-history-table td { padding: 8px 4px; border-bottom: 1px solid var(--border-soft); color: var(--text); font-variant-numeric: tabular-nums; }
 .bia-history-table tr:last-child td { border-bottom: none; }
 
 /* ---------------------------- MISC ---------------------------- */
-.empty-state { text-align: center; padding: 32px 16px; color: var(--text-muted); }
-.empty-state-icon { font-size: 40px; display: block; margin-bottom: 8px; }
+.empty-state { text-align: center; padding: 36px 16px; color: var(--text-muted); }
+.empty-state-icon {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 12px;
+  display: block;
+  color: var(--text-faint);
+}
+.empty-state-icon .icon { width: 100%; height: 100%; }
 
 @media (min-width: 640px) {
   main#view-app, main#view-dashboard, main#view-athlete-detail { padding-left: 24px; padding-right: 24px; max-width: 640px; margin: 0 auto; width: 100%; }

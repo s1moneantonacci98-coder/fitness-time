@@ -83,10 +83,40 @@ const GRUPPI_MUSCOLARI_ORDINE = [
 ];
 
 const CATEGORIE = {
-  sala_pesi: { label: 'Sala Pesi', icon: '🏋️' },
-  personal: { label: 'Personal', icon: '⭐' },
-  nuoto: { label: 'Nuoto', icon: '🏊' },
+  sala_pesi: { label: 'Sala Pesi', icon: 'dumbbell' },
+  personal: { label: 'Personal', icon: 'star' },
+  nuoto: { label: 'Nuoto', icon: 'waves' },
 };
+
+/* ---------------------------------------------------------------------
+ * ICONE (SVG inline al posto delle emoji — niente quadratini su Windows,
+ * coerenza visiva su tutte le piattaforme).
+ * ------------------------------------------------------------------- */
+const ICONS = {
+  dumbbell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="8.5" width="3" height="7" rx="1"/><rect x="18.5" y="8.5" width="3" height="7" rx="1"/><path d="M7 9.5v5M17 9.5v5M7 12h10"/></svg>',
+  clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="16" rx="2.2"/><path d="M9 4.5V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v.5"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4"/></svg>',
+  trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-5.5 4 3L20 6"/><path d="M14.5 6H20v5.5"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 3.5l2.47 5.13 5.53.66-4.09 3.86 1.08 5.6L12 15.9l-4.99 2.85 1.08-5.6-4.09-3.86 5.53-.66z"/></svg>',
+  waves: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9.5c1.5 1.6 3 1.6 4.5 0s3-1.6 4.5 0 3 1.6 4.5 0 3-1.6 4.5 0"/><path d="M2.5 15c1.5 1.6 3 1.6 4.5 0s3-1.6 4.5 0 3 1.6 4.5 0 3-1.6 4.5 0"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M19.5 19.5l-4.4-4.4"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="8.5" width="17" height="11" rx="1.5"/><path d="M3.5 8.5l2.2-4.5h12.6l2.2 4.5"/><path d="M10 13h4"/></svg>',
+  phone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h3l1.5 4-2 1.5a10 10 0 0 0 5 5l1.5-2 4 1.5v3a1.5 1.5 0 0 1-1.6 1.5A16 16 0 0 1 4.5 5.1 1.5 1.5 0 0 1 6 3.5z"/></svg>',
+  message: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 5.5h15a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H10l-4.5 3.5V16.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z"/></svg>',
+  bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.45 1 1.1 1 1.85V16h5v-.25c0-.75.4-1.4 1-1.85A6 6 0 0 0 12 3z"/></svg>',
+  gauge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15a8 8 0 1 1 16 0"/><path d="M12 15l3.5-4.5"/><circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"/><path d="M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2"/><path d="M6.5 7l0.9 11.5A2 2 0 0 0 9.4 20.5h5.2a2 2 0 0 0 2-1.9L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
+};
+
+function icon(name, cls) {
+  const svg = ICONS[name];
+  if (!svg) return '';
+  return svg.replace('<svg ', `<svg class="icon${cls ? ' ' + cls : ''}" `);
+}
 
 /* ---------------------------------------------------------------------
  * UTILITY DOM / UI
@@ -444,7 +474,7 @@ async function loadAthletes() {
 function categoriaBadgeHtml(categoria) {
   const c = CATEGORIE[categoria];
   if (!c) return '';
-  return `<span class="badge-categoria cat-${categoria}">${c.icon} ${escapeHtml(c.label)}</span>`;
+  return `<span class="badge-categoria cat-${categoria}">${icon(c.icon)}${escapeHtml(c.label)}</span>`;
 }
 
 function renderDashboard() {
@@ -460,7 +490,7 @@ function renderDashboard() {
   });
 
   if (!filtered.length) {
-    el.innerHTML = emptyState('🔍', 'Nessun atleta trovato con questi filtri.');
+    el.innerHTML = emptyState('search', 'Nessun atleta trovato con questi filtri.');
     return;
   }
 
@@ -648,10 +678,10 @@ function renderAthleteDetail() {
         <h3 class="card-title" style="margin-bottom:0;">${escapeHtml(a.nome)} ${escapeHtml(a.cognome)}</h3>
         ${categoriaBadgeHtml(a.categoria)}
       </div>
-      ${a.telefono ? `<p class="muted">📞 ${escapeHtml(a.telefono)}</p>` : ''}
-      ${a.note ? `<p class="muted">💬 ${escapeHtml(a.note)}</p>` : ''}
+      ${a.telefono ? `<p class="muted">${icon('phone')} ${escapeHtml(a.telefono)}</p>` : ''}
+      ${a.note ? `<p class="muted">${icon('message')} ${escapeHtml(a.note)}</p>` : ''}
       <button type="button" class="btn btn-secondary btn-block" id="simulate-btn" ${schedaAttiva ? '' : 'disabled'}>
-        👁️ Simula Allenamento (Vista Atleta)
+        ${icon('eye')} Simula Allenamento (Vista Atleta)
       </button>
     </div>
 
@@ -665,11 +695,11 @@ function renderAthleteDetail() {
           <span class="exercise-name">${escapeHtml(scheda.titolo)}</span>
           <div class="scheda-head-actions">
             <span class="chip ${scheda.attiva ? 'chip-red' : ''}">${scheda.attiva ? 'Attiva' : 'Conclusa'}</span>
-            <button type="button" class="icon-btn-sm icon-btn-danger" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">🗑️</button>
+            <button type="button" class="icon-btn-sm icon-btn-danger" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">${icon('trash')}</button>
           </div>
         </div>
         ${scheda.obiettivo ? `<p class="muted">${escapeHtml(scheda.obiettivo)}</p>` : ''}
-        ${!scheda.attiva ? `<button type="button" class="btn btn-secondary btn-sm" data-activate-scheda="${scheda.id}" style="margin-bottom:10px;">✔ Rendi attiva</button>` : ''}
+        ${!scheda.attiva ? `<button type="button" class="btn btn-secondary btn-sm" data-activate-scheda="${scheda.id}" style="margin-bottom:10px;">${icon('check')} Rendi attiva</button>` : ''}
         ${(scheda.fitnesstime_sessioni || []).map((s) => `
           <div class="exercise-item">
             <div class="exercise-head">
@@ -681,17 +711,17 @@ function renderAthleteDetail() {
                 <div class="exercise-row-line" data-esercizio-id="${ex.id}">
                   <div class="exercise-row-info">
                     <span class="exercise-row-name">${escapeHtml(ex.nome)}</span>
-                    <span class="exercise-row-meta">${ex.serie} serie × ${escapeHtml(ex.ripetizioni)} reps · ⏱ ${ex.tempo_recupero_secondi}s</span>
-                    ${ex.note_tecniche ? `<span class="exercise-row-note">💡 ${escapeHtml(ex.note_tecniche)}</span>` : ''}
+                    <span class="exercise-row-meta">${ex.serie} serie × ${escapeHtml(ex.ripetizioni)} reps ${icon('clock')}${ex.tempo_recupero_secondi}s</span>
+                    ${ex.note_tecniche ? `<span class="exercise-row-note">${icon('bulb')}${escapeHtml(ex.note_tecniche)}</span>` : ''}
                   </div>
-                  <button type="button" class="icon-btn-remove" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">✕</button>
+                  <button type="button" class="icon-btn-remove" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">${icon('close')}</button>
                 </div>
               `).join('')
               : '<p class="muted" style="font-size:13px;">Nessun esercizio in questo giorno.</p>'}
           </div>
         `).join('') || '<p class="muted">Nessun giorno configurato.</p>'}
       </div>
-    `).join('') : emptyState('📋', 'Nessuna scheda assegnata. Usa "+ Assegna Nuova Scheda" per crearne una.')}
+    `).join('') : emptyState('clipboard', 'Nessuna scheda assegnata. Usa "+ Assegna Nuova Scheda" per crearne una.')}
   `;
 
   const simBtn = $('#simulate-btn');
@@ -796,7 +826,7 @@ function biaSectionHtml(athlete) {
   return `
     <div class="card" data-bia-section>
       <div class="exercise-head">
-        <h3 class="card-title" style="margin-bottom:0;">📊 Composizione Corporea (BIA)</h3>
+        <h3 class="card-title" style="margin-bottom:0;">${icon('gauge')} Composizione Corporea (BIA)</h3>
         <button type="button" class="btn btn-secondary btn-sm" id="new-bia-btn">+ Nuova BIA</button>
       </div>
       ${summary}
@@ -1095,13 +1125,13 @@ function renderOggiView() {
   const scheda = state.activeScheda;
 
   if (!scheda) {
-    el.innerHTML = emptyState('📋', 'Nessuna scheda attiva. Il tuo coach non ha ancora caricato un programma.');
+    el.innerHTML = emptyState('clipboard', 'Nessuna scheda attiva. Il tuo coach non ha ancora caricato un programma.');
     return;
   }
 
   const sessioni = scheda.fitnesstime_sessioni || [];
   if (!sessioni.length) {
-    el.innerHTML = emptyState('🗂️', 'La scheda attiva non ha ancora giorni di allenamento configurati.');
+    el.innerHTML = emptyState('folder', 'La scheda attiva non ha ancora giorni di allenamento configurati.');
     return;
   }
 
@@ -1330,8 +1360,8 @@ function exerciseCardHtml(ex) {
     ex.percentuale_1rm ? `${ex.percentuale_1rm}% 1RM` : null,
     ex.rpe ? `RPE ${ex.rpe}` : null,
     ex.rir != null ? `RIR ${ex.rir}` : null,
-    `⏱ ${ex.tempo_recupero_secondi}s`,
-  ].filter(Boolean).map((c) => `<span class="chip chip-red">${c}</span>`).join('');
+  ].filter(Boolean).map((c) => `<span class="chip chip-red">${c}</span>`).join('')
+    + `<span class="chip chip-red">${icon('clock')}${ex.tempo_recupero_secondi}s</span>`;
 
   const rows = Array.from({ length: ex.serie }, (_, i) => i + 1).map((n) => `
     <div class="set-log-row" data-set="${n}">
@@ -1339,7 +1369,7 @@ function exerciseCardHtml(ex) {
       <input type="number" inputmode="decimal" step="0.5" min="0" placeholder="kg" class="input-carico">
       <input type="number" inputmode="numeric" min="0" placeholder="reps" class="input-reps">
       <input type="number" inputmode="decimal" step="0.5" min="0" max="10" placeholder="RPE" class="input-rpe">
-      <button type="button" class="btn btn-round" data-log-set>✓</button>
+      <button type="button" class="btn btn-round" data-log-set>${icon('check')}</button>
     </div>
   `).join('');
 
@@ -1352,7 +1382,7 @@ function exerciseCardHtml(ex) {
       <div class="exercise-meta">${chips}</div>
       <div class="set-log-legend"><span></span><span>Kg</span><span>Reps</span><span>RPE</span><span></span></div>
       ${rows}
-      ${ex.note_tecniche ? `<p class="muted" style="margin-top:8px;">💡 ${escapeHtml(ex.note_tecniche)}</p>` : ''}
+      ${ex.note_tecniche ? `<p class="muted" style="margin-top:8px;">${icon('bulb')} ${escapeHtml(ex.note_tecniche)}</p>` : ''}
     </div>
   `;
 }
@@ -1407,8 +1437,8 @@ function wireExerciseCard(ex, sessione) {
   });
 }
 
-function emptyState(icon, text) {
-  return `<div class="empty-state"><span class="empty-state-icon">${icon}</span><p>${escapeHtml(text)}</p></div>`;
+function emptyState(iconName, text) {
+  return `<div class="empty-state"><span class="empty-state-icon">${icon(iconName)}</span><p>${escapeHtml(text)}</p></div>`;
 }
 
 /* ---------------------------------------------------------------------
@@ -1417,7 +1447,7 @@ function emptyState(icon, text) {
 function renderSchedeView() {
   const el = $('#schede-content');
   if (!state.schede.length) {
-    el.innerHTML = emptyState('📋', 'Nessuna scheda assegnata dal tuo coach al momento.');
+    el.innerHTML = emptyState('clipboard', 'Nessuna scheda assegnata dal tuo coach al momento.');
     return;
   }
 
@@ -1440,7 +1470,7 @@ function renderSchedeView() {
           `).join('')}
         </div>
       `).join('') || '<p class="muted">Nessun giorno configurato.</p>'}
-      ${scheda.note_coach ? `<p class="muted" style="margin-top:8px;">💬 ${escapeHtml(scheda.note_coach)}</p>` : ''}
+      ${scheda.note_coach ? `<p class="muted" style="margin-top:8px;">${icon('message')} ${escapeHtml(scheda.note_coach)}</p>` : ''}
     </div>
   `).join('');
 }
@@ -1478,7 +1508,7 @@ async function loadStoricoLogs() {
     .limit(60);
 
   if (error || !data || !data.length) {
-    el.innerHTML = emptyState('📈', 'Nessuna serie registrata finora. Inizia un allenamento dalla tab "Oggi".');
+    el.innerHTML = emptyState('trending', 'Nessuna serie registrata finora. Inizia un allenamento dalla tab "Oggi".');
     return;
   }
 

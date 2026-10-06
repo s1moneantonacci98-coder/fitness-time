@@ -701,7 +701,7 @@ function renderAthleteDetail() {
       <button type="button" class="btn btn-secondary btn-block" id="simulate-btn" ${schedaAttiva ? '' : 'disabled'}>
         ${icon('eye')} Simula Allenamento (Vista Atleta)
       </button>
-      <button type="button" class="btn btn-secondary btn-block" id="delete-athlete-btn" style="margin-top:10px;color:#ffb3a6;">
+      <button type="button" class="btn btn-secondary btn-block" id="delete-athlete-btn">
         ${icon('trash')} Elimina atleta
       </button>
     </div>

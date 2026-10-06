@@ -316,8 +316,10 @@ Modello preso dalla scheda reale di Andrea (esempio: "Scheda allenamento Fabiana
   `fitnesstime_sessioni` + `addome`, `cardio` (testo libero per giorno).
 - **UI** (`index.html`/`app.js`): modal "+ Esercizio" con recupero anche a range, RIR, Tecnica;
   pulsante "Addome / Cardio" per ogni giorno (modal `#extras-overlay`).
-- **PDF** (`pdf.js`, jsPDF + autotable vendorizzati in `vendor/`): una pagina per giorno, tabella
-  ESERCIZIO / SERIE-REPS / RECUPERO / RIR / TECNICA-NOTE + blocchi ADDOME e CARDIO.
+- **PDF** (`pdf.js`, jsPDF + font DejaVu Sans in `vendor/dejavu-fonts.js`): replica grafica della scheda di
+  riferimento di Andrea (misure in pt misurate dal suo PDF, scarto max 0,3pt): una pagina per giorno con colore
+  proprio (viola, azzurro, verde, arancione a rotazione), titolo viola, banner giorno, tabella a righe alternate,
+  box ADDOME/CARDIO. Colori: #9B59B6/#E6D5ED, #3498DB/#CCE5F6, #27AE60/#C9EBD7, #E67E22/#F9DFC8; titolo #7A2E8E.
   Pulsanti "PDF" (scarica) e "Invia" su ogni scheda del profilo atleta.
 - **Invio WhatsApp**: `navigator.share` con il PDF allegato (menu condivisione del telefono → WhatsApp → contatto).
   Fallback (PC): scarica il PDF e apre `wa.me/<telefono atleta>` con messaggio pronto.

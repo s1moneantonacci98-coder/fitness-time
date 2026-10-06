@@ -331,6 +331,23 @@ $('#back-btn').addEventListener('click', () => {
 
 $('#simulate-exit-btn').addEventListener('click', exitSimulate);
 
+async function confirmAndDeleteAthlete(athlete) {
+  const nome = `${athlete.nome} ${athlete.cognome}`.trim();
+  if (!window.confirm(`Eliminare definitivamente ${nome}? Verranno eliminate anche tutte le sue schede e le sue BIA. Non si può annullare.`)) return;
+  try {
+    const { data, error } = await sb.from('fitnesstime_profiles').delete().eq('id', athlete.id).select('id');
+    if (error) throw error;
+    if (!data || !data.length) {
+      toast('Eliminazione non permessa dal database (manca il permesso).', 'error', 4500);
+      return;
+    }
+    toast(`${nome} eliminato ✔`, 'success', 2000);
+    await goToDashboard();
+  } catch (err) {
+    toast('Errore nell\'eliminazione: ' + ((err && err.message) || 'riprova.'), 'error', 4500);
+  }
+}
+
 async function goToDashboard() {
   state.selectedAthlete = null;
   setMacroView('dashboard');
@@ -684,6 +701,9 @@ function renderAthleteDetail() {
       <button type="button" class="btn btn-secondary btn-block" id="simulate-btn" ${schedaAttiva ? '' : 'disabled'}>
         ${icon('eye')} Simula Allenamento (Vista Atleta)
       </button>
+      <button type="button" class="btn btn-secondary btn-block" id="delete-athlete-btn" style="margin-top:10px;color:#ffb3a6;">
+        ${icon('trash')} Elimina atleta
+      </button>
     </div>
 
     ${biaSectionHtml(a)}
@@ -734,6 +754,9 @@ function renderAthleteDetail() {
       </div>
     `).join('') : emptyState('clipboard', 'Nessuna scheda assegnata. Usa "+ Assegna Nuova Scheda" per crearne una.')}
   `;
+
+  const delAthleteBtn = $('#delete-athlete-btn');
+  if (delAthleteBtn) delAthleteBtn.addEventListener('click', () => confirmAndDeleteAthlete(a));
 
   const simBtn = $('#simulate-btn');
   if (simBtn) simBtn.addEventListener('click', () => startSimulate(a, schedaAttiva));

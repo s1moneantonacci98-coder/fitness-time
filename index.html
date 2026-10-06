@@ -363,30 +363,78 @@
         <span>Data rilevazione</span>
         <input type="date" id="bia-data" name="bia-data" required>
       </label>
+      <div class="bia-form-grid">
       <label class="field">
         <span>Peso (kg)</span>
-        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-peso" name="bia-peso" placeholder="Es. 78.4" required>
+        <input type="number" inputmode="decimal" step="0.1" min="0" required id="bia-peso" name="bia-peso" placeholder="70.5">
       </label>
       <label class="field">
-        <span>Massa Grassa (%)</span>
-        <input type="number" inputmode="decimal" step="0.1" min="0" max="100" id="bia-grasso" name="bia-grasso" placeholder="Es. 18.5">
+        <span>Altezza (cm)</span>
+        <input type="number" inputmode="decimal" step="0.5" min="0" id="bia-altezza" name="bia-altezza" placeholder="169">
       </label>
       <label class="field">
-        <span>Massa Magra (kg)</span>
-        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-magra" name="bia-magra" placeholder="Es. 63.9">
+        <span>PhA (°)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-pha" name="bia-pha" placeholder="6.7">
       </label>
       <label class="field">
-        <span>Idratazione (%)</span>
-        <input type="number" inputmode="decimal" step="0.1" min="0" max="100" id="bia-acqua" name="bia-acqua" placeholder="Es. 55.2">
+        <span>Massa magra FFM (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-magra" name="bia-magra" placeholder="57.1">
       </label>
       <label class="field">
-        <span>Grasso Viscerale</span>
-        <input type="number" inputmode="decimal" step="0.5" min="0" id="bia-viscerale" name="bia-viscerale" placeholder="Es. 7">
+        <span>Massa grassa FM (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-fm" name="bia-fm" placeholder="13.4">
       </label>
+      <label class="field">
+        <span>Muscolo SMM (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-smm" name="bia-smm" placeholder="32.3">
+      </label>
+      <label class="field">
+        <span>Acqua TBW (L)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-tbw" name="bia-tbw" placeholder="43.1">
+      </label>
+      </div>
+      <details class="bia-more">
+        <summary>Altri valori del PDF</summary>
+        <div class="bia-form-grid">
+      <label class="field">
+        <span>RZ (Ohm)</span>
+        <input type="number" inputmode="decimal" step="1" min="0" id="bia-rz" name="bia-rz" placeholder="435">
+      </label>
+      <label class="field">
+        <span>XC (Ohm)</span>
+        <input type="number" inputmode="decimal" step="1" min="0" id="bia-xc" name="bia-xc" placeholder="51">
+      </label>
+      <label class="field">
+        <span>BMR (kcal)</span>
+        <input type="number" inputmode="decimal" step="1" min="0" id="bia-bmr" name="bia-bmr" placeholder="1600">
+      </label>
+      <label class="field">
+        <span>BCMI</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-bcmi" name="bia-bcmi" placeholder="11.0">
+      </label>
+      <label class="field">
+        <span>BCM (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-bcm" name="bia-bcm" placeholder="31.5">
+      </label>
+      <label class="field">
+        <span>ASMM (kg)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-asmm" name="bia-asmm" placeholder="24.4">
+      </label>
+      <label class="field">
+        <span>ECW (L)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-ecw" name="bia-ecw" placeholder="18.3">
+      </label>
+      <label class="field">
+        <span>ICW (L)</span>
+        <input type="number" inputmode="decimal" step="0.1" min="0" id="bia-icw" name="bia-icw" placeholder="24.8">
+      </label>
+        </div>
+      </details>
       <label class="field">
         <span>Note</span>
         <input type="text" id="bia-note" name="bia-note" placeholder="Es. A digiuno, mattina…">
       </label>
+      <p id="bia-calcoli" class="bia-calcoli muted" hidden></p>
       <p id="bia-error" class="form-error" role="alert" hidden></p>
       <button type="submit" id="bia-submit" class="btn btn-primary btn-block">Salva rilevazione</button>
     </form>

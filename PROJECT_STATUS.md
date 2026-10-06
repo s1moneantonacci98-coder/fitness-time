@@ -1,6 +1,6 @@
 # Fitness Time Club — PWA & Workout Tracker — Stato progetto
 
-_Ultimo aggiornamento: 2026-10-06 (scheda dettagliata stile Andrea + export PDF + invio WhatsApp via condivisione telefono). Precedente: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
+_Ultimo aggiornamento: 2026-10-06 (BIA completa con tutti i parametri del PDF di Andrea; scheda dettagliata stile Andrea + export PDF + invio WhatsApp via condivisione telefono). Precedente: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
 
 ## 1. Moduli completati e funzionanti
 
@@ -325,6 +325,21 @@ Modello preso dalla scheda reale di Andrea (esempio: "Scheda allenamento Fabiana
 - SW `fitnesstime-v3` (nuovi asset in cache).
 - **BIA di Andrea**: PDF esempio ricevuto (valori: PhA, BCM, FFM, FM, SMM, ASMM, TBW, ECW, ICW + grafici BIVA);
   modulo BIA attuale ha solo 6 campi -> da estendere (prossimo step, da discutere con Simone).
+
+## 3octies. BIA COMPLETA (attiva ora — 2026-10-06)
+
+Decisione: l'app e' ad uso di Andrea (nessun login clienti per ora; link personale cliente = idea futura).
+Andrea inserisce a mano i valori misurati dal PDF del suo strumento BIA; non si carica il PDF.
+
+- **DB** (applicata live): `fitnesstime_misure_bia` + `altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi,
+  bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l`. `massa_magra_kg` = FFM.
+  `massa_grassa_perc` e `acqua_perc` vengono calcolate dall'app al salvataggio (FM/peso, TBW/peso).
+- **UI**: form con valori principali + sezione "Altri valori del PDF"; anteprima calcoli live
+  (BMI, % grasso/magra/muscolo/acqua). Card profilo: 6 indicatori con frecce vs rilevazione precedente
+  + "Tutti i valori" (BMI e tutte le percentuali calcolate come nel PDF; scarto max 0,1 per arrotondamenti).
+- **Dati**: atleti demo non ancora eliminati (la cancellazione dal DB e' stata annullata dalla conferma
+  di Supabase); aggiunta Fabiana Mece con la sua scheda (4 giorni, 28 esercizi).
+- **Da fare**: login solo per Andrea (serve la sua mail) e disattivare DEMO_MODE; poi, se serve, link personale cliente.
 
 ## 4. Prossimi step prioritari
 

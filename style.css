@@ -1005,3 +1005,18 @@ main#view-dashboard, main#view-athlete-detail {
 .session-extra { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; line-height: 1.4; }
 .session-extra strong { color: var(--text); font-size: 11px; letter-spacing: 0.5px; margin-right: 4px; }
 .exercise-row-tecnica { font-size: 12px; color: #ffb3a6; font-weight: 700; }
+
+/* ---------------------------- BIA COMPLETA ---------------------------- */
+.bia-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bia-form-grid .field span { font-size: 11px; }
+.bia-more { margin: 4px 0 10px; }
+.bia-more > summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-muted); padding: 8px 0; }
+.bia-more[open] > summary { color: var(--text); }
+.bia-calcoli { font-size: 13px; margin: 0; }
+.bia-detail-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+.bia-detail-table th { text-align: left; color: var(--text-muted); font-weight: 700; padding: 6px 4px; width: 20%; }
+.bia-detail-table td { padding: 6px 4px; color: var(--text); font-variant-numeric: tabular-nums; width: 30%; }
+.bia-detail-table tr { border-bottom: 1px solid var(--border-soft); }
+.bia-detail-table tr:last-child { border-bottom: none; }
+.bia-form-grid > * { min-width: 0; }
+.bia-form-grid input { width: 100%; min-width: 0; box-sizing: border-box; }

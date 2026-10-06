@@ -1,6 +1,6 @@
 # Fitness Time Club — PWA & Workout Tracker — Stato progetto
 
-_Ultimo aggiornamento: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
+_Ultimo aggiornamento: 2026-10-06 (scheda dettagliata stile Andrea + export PDF + invio WhatsApp via condivisione telefono). Precedente: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
 
 ## 1. Moduli completati e funzionanti
 
@@ -307,6 +307,25 @@ nessuna modifica a logica, query Supabase o schema.
   business, struttura dati. Nessun `id`/`data-*` referenziato da `app.js` e'
   stato rinominato.
 
+## 3septies. SCHEDA DETTAGLIATA + PDF + INVIO WHATSAPP (attivo ora — 2026-10-06)
+
+Modello preso dalla scheda reale di Andrea (esempio: "Scheda allenamento Fabiana Mece", 4 giorni).
+
+- **DB** (`fitnesstime_migration_scheda_dettagliata.sql`, applicata live): `fitnesstime_esercizi`
+  + `recupero_max_secondi` (range es. 90-120"), `tecnica` (es. Superset con ...), `rir_testo` (es. "2-3");
+  `fitnesstime_sessioni` + `addome`, `cardio` (testo libero per giorno).
+- **UI** (`index.html`/`app.js`): modal "+ Esercizio" con recupero anche a range, RIR, Tecnica;
+  pulsante "Addome / Cardio" per ogni giorno (modal `#extras-overlay`).
+- **PDF** (`pdf.js`, jsPDF + autotable vendorizzati in `vendor/`): una pagina per giorno, tabella
+  ESERCIZIO / SERIE-REPS / RECUPERO / RIR / TECNICA-NOTE + blocchi ADDOME e CARDIO.
+  Pulsanti "PDF" (scarica) e "Invia" su ogni scheda del profilo atleta.
+- **Invio WhatsApp**: `navigator.share` con il PDF allegato (menu condivisione del telefono → WhatsApp → contatto).
+  Fallback (PC): scarica il PDF e apre `wa.me/<telefono atleta>` con messaggio pronto.
+  WhatsApp Business API valutata e rimandata (costi/account verificato).
+- SW `fitnesstime-v3` (nuovi asset in cache).
+- **BIA di Andrea**: PDF esempio ricevuto (valori: PhA, BCM, FFM, FM, SMM, ASMM, TBW, ECW, ICW + grafici BIVA);
+  modulo BIA attuale ha solo 6 campi -> da estendere (prossimo step, da discutere con Simone).
+
 ## 4. Prossimi step prioritari
 
 1. **Deploy su Vercel**: creare/collegare il progetto Vercel al repository Git di questa
@@ -317,8 +336,7 @@ nessuna modifica a logica, query Supabase o schema.
    Studio. Prossimo modulo naturale: interfaccia "Gestione Atleti & Schede" per i coach.
    Prima di iniziare, verificare al riavvio della sessione questo file, il repository e
    `fitnesstime_schema.sql` per evitare sovrascritture accidentali.
-3. **Export PDF scheda** (menzionato nelle istruzioni di progetto): modulo non ancora
-   implementato.
+3. ~~Export PDF scheda~~ — fatto (vedi 3septies).
 4. **Notifica acustica/vibrazione**: implementata via WebAudio + Vibration API (nessun
    asset audio esterno necessario); da validare su device reale iOS (le policy di
    autoplay audio di Safari possono richiedere un'interazione utente, già garantita dal

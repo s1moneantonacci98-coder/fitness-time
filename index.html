@@ -244,8 +244,16 @@
         <input type="text" id="aex-serie-reps" name="aex-serie-reps" placeholder="Es. 3x10">
       </label>
       <label class="field">
-        <span>Recupero (secondi)</span>
-        <input type="number" id="aex-recupero" name="aex-recupero" min="0" step="5" placeholder="Es. 90">
+        <span>Recupero (secondi, anche range)</span>
+        <input type="text" id="aex-recupero" name="aex-recupero" inputmode="text" placeholder="Es. 90 oppure 90-120">
+      </label>
+      <label class="field">
+        <span>RIR (ripetizioni in riserva)</span>
+        <input type="text" id="aex-rir" name="aex-rir" inputmode="decimal" placeholder="Es. 2">
+      </label>
+      <label class="field">
+        <span>Tecnica</span>
+        <input type="text" id="aex-tecnica" name="aex-tecnica" placeholder="Es. Superset con Leg extension">
       </label>
       <label class="field">
         <span>Note / Carico indicativo</span>
@@ -291,6 +299,28 @@
       </label>
       <p id="nat-error" class="form-error" role="alert" hidden></p>
       <button type="submit" id="nat-submit" class="btn btn-primary btn-block">Crea atleta</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: ADDOME / CARDIO DEL GIORNO ================= -->
+<div id="extras-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Addome e cardio">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title" id="extras-title">Addome &amp; Cardio</h3>
+      <button type="button" class="icon-btn" id="extras-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <form id="extras-form" class="auth-form">
+      <label class="field">
+        <span>Addome</span>
+        <textarea id="extras-addome" rows="3" placeholder="Es. Crunch machine 3×12-15 + plank 3×25-40 sec"></textarea>
+      </label>
+      <label class="field">
+        <span>Cardio</span>
+        <textarea id="extras-cardio" rows="3" placeholder="Es. 15-20 min tapis roulant, camminata inclinata"></textarea>
+      </label>
+      <p id="extras-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="extras-submit" class="btn btn-primary btn-block">Salva</button>
     </form>
   </div>
 </div>
@@ -367,6 +397,9 @@
 <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
 <script src="vendor/supabase.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/jspdf.plugin.autotable.min.js"></script>
+<script src="pdf.js"></script>
 <script src="app.js" defer></script>
 </body>
 </html>

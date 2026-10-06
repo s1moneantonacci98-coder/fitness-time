@@ -109,6 +109,8 @@ const ICONS = {
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
   trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7h15"/><path d="M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2"/><path d="M6.5 7l0.9 11.5A2 2 0 0 0 9.4 20.5h5.2a2 2 0 0 0 2-1.9L17.5 7"/><path d="M10 11v6M14 11v6"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.3"/><circle cx="17.5" cy="6" r="2.3"/><circle cx="17.5" cy="18" r="2.3"/><path d="M8 11l7.5-4M8 13l7.5 4"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M4.5 19.5h15"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
 };
 
@@ -389,11 +391,11 @@ async function loadSchede() {
     .select(`
       id, titolo, obiettivo, data_inizio, data_scadenza, settimane_durata, note_coach, attiva,
       fitnesstime_sessioni (
-        id, nome, ordine, note,
+        id, nome, ordine, note, addome, cardio,
         fitnesstime_esercizi (
           id, nome, target_muscolare, video_url, ordine, schema_serie, serie,
           ripetizioni, carico_target, percentuale_1rm, rpe, rir,
-          tempo_recupero_secondi, note_tecniche
+          tempo_recupero_secondi, recupero_max_secondi, tecnica, rir_testo, note_tecniche
         )
       )
     `)
@@ -626,11 +628,11 @@ async function goToAthleteDetail(athleteId) {
       fitnesstime_schede (
         id, titolo, obiettivo, data_inizio, data_scadenza, settimane_durata, note_coach, attiva,
         fitnesstime_sessioni (
-          id, nome, ordine, note,
+          id, nome, ordine, note, addome, cardio,
           fitnesstime_esercizi (
             id, nome, target_muscolare, video_url, ordine, schema_serie, serie,
             ripetizioni, carico_target, percentuale_1rm, rpe, rir,
-            tempo_recupero_secondi, note_tecniche
+            tempo_recupero_secondi, recupero_max_secondi, tecnica, rir_testo, note_tecniche
           )
         )
       ),
@@ -699,25 +701,35 @@ function renderAthleteDetail() {
           </div>
         </div>
         ${scheda.obiettivo ? `<p class="muted">${escapeHtml(scheda.obiettivo)}</p>` : ''}
+        <div class="scheda-actions">
+          <button type="button" class="btn btn-secondary btn-sm" data-pdf-scheda="${scheda.id}">${icon('download')} PDF</button>
+          <button type="button" class="btn btn-primary btn-sm" data-share-scheda="${scheda.id}">${icon('share')} Invia</button>
+        </div>
         ${!scheda.attiva ? `<button type="button" class="btn btn-secondary btn-sm" data-activate-scheda="${scheda.id}" style="margin-bottom:10px;">${icon('check')} Rendi attiva</button>` : ''}
         ${(scheda.fitnesstime_sessioni || []).map((s) => `
           <div class="exercise-item">
             <div class="exercise-head">
               <span class="exercise-name">${escapeHtml(s.nome)}</span>
-              <button type="button" class="btn-pill-add" data-add-ex-sessione="${s.id}">+ Esercizio</button>
+              <div class="scheda-head-actions">
+                <button type="button" class="btn-pill-add" data-extras-sessione="${s.id}">Addome / Cardio</button>
+                <button type="button" class="btn-pill-add" data-add-ex-sessione="${s.id}">+ Esercizio</button>
+              </div>
             </div>
             ${(s.fitnesstime_esercizi || []).length
               ? (s.fitnesstime_esercizi || []).map((ex) => `
                 <div class="exercise-row-line" data-esercizio-id="${ex.id}">
                   <div class="exercise-row-info">
                     <span class="exercise-row-name">${escapeHtml(ex.nome)}</span>
-                    <span class="exercise-row-meta">${ex.serie} serie × ${escapeHtml(ex.ripetizioni)} reps ${icon('clock')}${ex.tempo_recupero_secondi}s</span>
+                    <span class="exercise-row-meta">${ex.serie}×${escapeHtml(ex.ripetizioni)} ${icon('clock')}${escapeHtml(recuperoLabel(ex))}${rirLabel(ex) !== '—' ? ' · RIR ' + escapeHtml(rirLabel(ex)) : ''}</span>
+                    ${ex.tecnica ? `<span class="exercise-row-tecnica">${escapeHtml(ex.tecnica)}</span>` : ''}
                     ${ex.note_tecniche ? `<span class="exercise-row-note">${icon('bulb')}${escapeHtml(ex.note_tecniche)}</span>` : ''}
                   </div>
                   <button type="button" class="icon-btn-remove" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">${icon('close')}</button>
                 </div>
               `).join('')
               : '<p class="muted" style="font-size:13px;">Nessun esercizio in questo giorno.</p>'}
+            ${s.addome ? `<p class="session-extra"><strong>ADDOME</strong>${escapeHtml(s.addome)}</p>` : ''}
+            ${s.cardio ? `<p class="session-extra"><strong>CARDIO</strong>${escapeHtml(s.cardio)}</p>` : ''}
           </div>
         `).join('') || '<p class="muted">Nessun giorno configurato.</p>'}
       </div>
@@ -750,6 +762,33 @@ function renderAthleteDetail() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       confirmAndRemoveEsercizio(btn.dataset.removeEsercizio);
+    });
+  });
+
+  const schedaById = (id) => (a.fitnesstime_schede || []).find((x) => x.id === id);
+  $$('[data-pdf-scheda]', el).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const sc = schedaById(btn.dataset.pdfScheda);
+      if (!sc) return;
+      try { downloadSchedaPdf(a, sc); toast('PDF scaricato ✔', 'success', 1800); }
+      catch (err) { toast('Errore nella creazione del PDF.', 'error'); }
+    });
+  });
+  $$('[data-share-scheda]', el).forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const sc = schedaById(btn.dataset.shareScheda);
+      if (!sc) return;
+      try {
+        const r = await shareSchedaPdf(a, sc);
+        if (r === 'fallback') toast('PDF scaricato: allegalo nella chat WhatsApp.', 'default', 4200);
+      } catch (err) { toast('Errore nell\'invio della scheda.', 'error'); }
+    });
+  });
+
+  $$('[data-extras-sessione]', el).forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const sessione = findSessioneById(a, btn.dataset.extrasSessione);
+      if (sessione) openExtrasModal(sessione);
     });
   });
 
@@ -1070,6 +1109,43 @@ $('#new-scheda-form').addEventListener('submit', async (e) => {
 });
 
 /* ---------------------------------------------------------------------
+ * ADDOME / CARDIO del giorno
+ * ------------------------------------------------------------------- */
+function openExtrasModal(sessione) {
+  $('#extras-title').textContent = 'Addome & Cardio — ' + sessione.nome;
+  $('#extras-addome').value = sessione.addome || '';
+  $('#extras-cardio').value = sessione.cardio || '';
+  $('#extras-error').hidden = true;
+  $('#extras-overlay').dataset.sessioneId = sessione.id;
+  $('#extras-overlay').hidden = false;
+}
+function closeExtrasModal() { $('#extras-overlay').hidden = true; }
+$('#extras-close').addEventListener('click', closeExtrasModal);
+$('#extras-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'extras-overlay') closeExtrasModal();
+});
+$('#extras-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = $('#extras-overlay').dataset.sessioneId;
+  const addome = $('#extras-addome').value.trim() || null;
+  const cardio = $('#extras-cardio').value.trim() || null;
+  const btn = $('#extras-submit');
+  btn.disabled = true;
+  const { error } = await sb.from('fitnesstime_sessioni').update({ addome, cardio }).eq('id', id);
+  btn.disabled = false;
+  if (error) {
+    $('#extras-error').textContent = 'Errore nel salvataggio: ' + (error.message || 'riprova.');
+    $('#extras-error').hidden = false;
+    return;
+  }
+  const sessione = state.selectedAthlete && findSessioneById(state.selectedAthlete, id);
+  if (sessione) { sessione.addome = addome; sessione.cardio = cardio; }
+  closeExtrasModal();
+  toast('Salvato ✔', 'success', 1500);
+  renderAthleteDetail();
+});
+
+/* ---------------------------------------------------------------------
  * SIMULA ALLENAMENTO (Vista Atleta) — riusa la UI "Allenamento Oggi"
  * ------------------------------------------------------------------- */
 async function startSimulate(athlete, schedaAttiva) {
@@ -1295,7 +1371,13 @@ $('#add-exercise-form').addEventListener('submit', async (e) => {
   }
 
   const { serie, ripetizioni } = parseSerieRipetizioni($('#aex-serie-reps').value);
-  const recupero = parseInt($('#aex-recupero').value, 10);
+  const recRaw = $('#aex-recupero').value.trim();
+  const recMatch = recRaw.match(/^(\d+)\s*(?:[-–]\s*(\d+))?/);
+  const recupero = recMatch ? parseInt(recMatch[1], 10) : (/^[—–-]$/.test(recRaw) ? 0 : (recRaw ? NaN : 90));
+  const recuperoMax = recMatch && recMatch[2] ? parseInt(recMatch[2], 10) : null;
+  const rirRaw = $('#aex-rir').value.trim().replace(',', '.');
+  const rirNum = rirRaw === '' ? null : parseFloat(rirRaw);
+  const tecnica = $('#aex-tecnica').value.trim();
   const note = $('#aex-note').value.trim();
 
   const submitBtn = $('#aex-submit');
@@ -1308,8 +1390,12 @@ $('#add-exercise-form').addEventListener('submit', async (e) => {
     serie: Number.isFinite(serie) && serie > 0 ? serie : 3,
     ripetizioni: ripetizioni || '10',
     tempo_recupero_secondi: Number.isFinite(recupero) && recupero >= 0 ? recupero : 90,
+    recupero_max_secondi: recuperoMax && recuperoMax > recupero ? recuperoMax : null,
+    rir: rirNum != null && Number.isFinite(rirNum) && rirNum >= 0 && rirNum <= 10 && /^\d+(\.\d+)?$/.test(rirRaw) ? rirNum : null,
+    rir_testo: rirRaw || null,
+    tecnica: tecnica || null,
     note_tecniche: note || null,
-    ordine: 999,
+    ordine: ((findSessioneById(state.selectedAthlete || { fitnesstime_schede: state.schede || [] }, sessioneId) || {}).fitnesstime_esercizi || []).length + 1,
   };
 
   try {
@@ -1319,7 +1405,7 @@ $('#add-exercise-form').addEventListener('submit', async (e) => {
       .select(`
         id, nome, target_muscolare, video_url, ordine, schema_serie, serie,
         ripetizioni, carico_target, percentuale_1rm, rpe, rir,
-        tempo_recupero_secondi, note_tecniche
+        tempo_recupero_secondi, recupero_max_secondi, tecnica, rir_testo, note_tecniche
       `)
       .single();
 
@@ -1359,9 +1445,9 @@ function exerciseCardHtml(ex) {
     ex.carico_target ? escapeHtml(ex.carico_target) : null,
     ex.percentuale_1rm ? `${ex.percentuale_1rm}% 1RM` : null,
     ex.rpe ? `RPE ${ex.rpe}` : null,
-    ex.rir != null ? `RIR ${ex.rir}` : null,
+    rirLabel(ex) !== '—' ? `RIR ${rirLabel(ex)}` : null,
   ].filter(Boolean).map((c) => `<span class="chip chip-red">${c}</span>`).join('')
-    + `<span class="chip chip-red">${icon('clock')}${ex.tempo_recupero_secondi}s</span>`;
+    + `<span class="chip chip-red">${icon('clock')}${escapeHtml(recuperoLabel(ex))}</span>`;
 
   const rows = Array.from({ length: ex.serie }, (_, i) => i + 1).map((n) => `
     <div class="set-log-row" data-set="${n}">

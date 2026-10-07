@@ -111,6 +111,7 @@ const ICONS = {
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.3"/><circle cx="17.5" cy="6" r="2.3"/><circle cx="17.5" cy="18" r="2.3"/><path d="M8 11l7.5-4M8 13l7.5 4"/></svg>',
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M4.5 19.5h15"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
 };
 
@@ -683,6 +684,16 @@ async function goToAthleteDetail(athleteId) {
   renderAthleteDetail();
 }
 
+const SCHEDE_COLLASSATE_KEY = 'fitnesstime-schede-collassate';
+function loadSchedeCollassate() {
+  try { return new Set(JSON.parse(localStorage.getItem(SCHEDE_COLLASSATE_KEY) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function saveSchedeCollassate(set) {
+  try { localStorage.setItem(SCHEDE_COLLASSATE_KEY, JSON.stringify([...set])); } catch (e) { /* storage non disponibile */ }
+}
+const schedeCollassate = loadSchedeCollassate();
+
 function renderAthleteDetail() {
   const a = state.selectedAthlete;
   const el = $('#athlete-detail-content');
@@ -711,15 +722,16 @@ function renderAthleteDetail() {
     <button type="button" class="btn btn-primary btn-block" id="assign-scheda-btn">+ Assegna Nuova Scheda</button>
 
     ${(a.fitnesstime_schede || []).length ? (a.fitnesstime_schede || []).map((scheda) => `
-      <div class="card session-card" data-scheda-id="${scheda.id}">
-        <div class="exercise-head">
-          <span class="exercise-name">${escapeHtml(scheda.titolo)}</span>
+      <div class="card session-card scheda-collassabile${schedeCollassate.has(scheda.id) ? ' is-collapsed' : ''}" data-scheda-id="${scheda.id}">
+        <div class="exercise-head scheda-toggle" data-toggle-scheda="${scheda.id}" role="button" tabindex="0" aria-expanded="${schedeCollassate.has(scheda.id) ? 'false' : 'true'}" title="Riduci / espandi scheda">
+          <span class="exercise-name"><span class="scheda-chevron">${icon('chevron')}</span>${escapeHtml(scheda.titolo)}</span>
           <div class="scheda-head-actions">
             <span class="chip ${scheda.attiva ? 'chip-red' : ''}">${scheda.attiva ? 'Attiva' : 'Conclusa'}</span>
             <button type="button" class="icon-btn-sm icon-btn-danger" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">${icon('trash')}</button>
           </div>
         </div>
         ${scheda.obiettivo ? `<p class="muted">${escapeHtml(scheda.obiettivo)}</p>` : ''}
+        <div class="scheda-body">
         <div class="scheda-actions">
           <button type="button" class="btn btn-secondary btn-sm" data-pdf-scheda="${scheda.id}">${icon('download')} PDF</button>
           <button type="button" class="btn btn-primary btn-sm" data-share-scheda="${scheda.id}">${icon('share')} Invia</button>
@@ -751,6 +763,7 @@ function renderAthleteDetail() {
             ${s.cardio ? `<p class="session-extra"><strong>CARDIO</strong>${escapeHtml(s.cardio)}</p>` : ''}
           </div>
         `).join('') || '<p class="muted">Nessun giorno configurato.</p>'}
+        </div>
       </div>
     `).join('') : emptyState('clipboard', 'Nessuna scheda assegnata. Usa "+ Assegna Nuova Scheda" per crearne una.')}
   `;
@@ -765,6 +778,25 @@ function renderAthleteDetail() {
 
   const biaBtn = $('#new-bia-btn');
   if (biaBtn) biaBtn.addEventListener('click', () => openBiaModal(a.id));
+
+  const toggleScheda = (head) => {
+    const card = head.closest('[data-scheda-id]');
+    if (!card) return;
+    const id = card.dataset.schedaId;
+    const collapsed = card.classList.toggle('is-collapsed');
+    head.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (collapsed) schedeCollassate.add(id); else schedeCollassate.delete(id);
+    saveSchedeCollassate(schedeCollassate);
+  };
+  $$('[data-toggle-scheda]', el).forEach((head) => {
+    head.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return; // cestino ecc. non devono comprimere
+      toggleScheda(head);
+    });
+    head.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target === head) { e.preventDefault(); toggleScheda(head); }
+    });
+  });
 
   $$('[data-delete-scheda]', el).forEach((btn) => {
     btn.addEventListener('click', (e) => {

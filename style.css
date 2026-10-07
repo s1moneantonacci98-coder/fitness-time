@@ -1048,3 +1048,12 @@ main#view-dashboard, main#view-athlete-detail {
 .bia-form-grid > * { min-width: 0; }
 .bia-form-grid input { width: 100%; min-width: 0; box-sizing: border-box; }
 #delete-athlete-btn { margin-top: 10px; color: #ffb3a6; }
+
+/* Schede comprimibili (vista coach) */
+.scheda-toggle { cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; }
+.scheda-toggle .exercise-name { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.scheda-chevron { display: inline-flex; flex-shrink: 0; color: var(--gold); transition: transform .2s ease; }
+.scheda-chevron .icon { width: 18px; height: 18px; }
+.scheda-collassabile.is-collapsed .scheda-chevron { transform: rotate(-90deg); }
+.scheda-collassabile.is-collapsed .scheda-body { display: none; }
+.scheda-collassabile.is-collapsed .scheda-toggle { margin-bottom: 0; }

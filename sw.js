@@ -4,7 +4,7 @@
  * network-first per le chiamate API verso Supabase.
  * Aggiornare CACHE_VERSION ad ogni release per invalidare la cache.
  */
-const CACHE_VERSION = 'fitnesstime-v9';
+const CACHE_VERSION = 'fitnesstime-v10';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
 const APP_SHELL = [
@@ -64,20 +64,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Solo stesse origine: app shell cache-first con aggiornamento in background.
+  // Stessa origine: network-first (aggiornamenti subito visibili),
+  // con ripiego sulla cache quando manca la rete (offline in sala pesi).
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const network = fetch(request)
-          .then((response) => {
-            if (response && response.ok) {
-              caches.open(APP_SHELL_CACHE).then((cache) => cache.put(request, response.clone()));
-            }
-            return response;
-          })
-          .catch(() => cached || caches.match('./index.html'));
-        return cached || network;
-      })
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const copy = response.clone();
+            caches.open(APP_SHELL_CACHE).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || caches.match('./index.html')))
     );
   }
 });

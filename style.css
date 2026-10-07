@@ -249,6 +249,10 @@ main#view-app {
 
 .signup-fields { display: flex; flex-direction: column; gap: 14px; }
 
+/* Modale "Aggiungi esercizio": stessa spaziatura tra tutti i campi, anche dentro i gruppi Catalogo/Personalizzato */
+#aex-catalogo-fields:not([hidden]),
+#aex-custom-fields:not([hidden]) { display: flex; flex-direction: column; gap: 14px; }
+
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
 .field input,

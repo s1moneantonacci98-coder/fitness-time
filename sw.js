@@ -4,7 +4,7 @@
  * network-first per le chiamate API verso Supabase.
  * Aggiornare CACHE_VERSION ad ogni release per invalidare la cache.
  */
-const CACHE_VERSION = 'fitnesstime-v5';
+const CACHE_VERSION = 'fitnesstime-v4';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
 const APP_SHELL = [
@@ -15,7 +15,7 @@ const APP_SHELL = [
   './manifest.json',
   './vendor/supabase.js',
   './vendor/jspdf.umd.min.js',
-  './vendor/dejavu-fonts.js',
+  './vendor/jspdf.plugin.autotable.min.js',
   './pdf.js',
   './icons/icon-192.png',
   './icons/icon-512.png',

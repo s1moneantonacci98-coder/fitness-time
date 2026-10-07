@@ -331,6 +331,23 @@ $('#back-btn').addEventListener('click', () => {
 
 $('#simulate-exit-btn').addEventListener('click', exitSimulate);
 
+async function confirmAndDeleteAthlete(athlete) {
+  const nome = `${athlete.nome} ${athlete.cognome}`.trim();
+  if (!window.confirm(`Eliminare definitivamente ${nome}? Verranno eliminate anche tutte le sue schede e le sue BIA. Non si può annullare.`)) return;
+  try {
+    const { data, error } = await sb.from('fitnesstime_profiles').delete().eq('id', athlete.id).select('id');
+    if (error) throw error;
+    if (!data || !data.length) {
+      toast('Eliminazione non permessa dal database (manca il permesso).', 'error', 4500);
+      return;
+    }
+    toast(`${nome} eliminato ✔`, 'success', 2000);
+    await goToDashboard();
+  } catch (err) {
+    toast('Errore nell\'eliminazione: ' + ((err && err.message) || 'riprova.'), 'error', 4500);
+  }
+}
+
 async function goToDashboard() {
   state.selectedAthlete = null;
   setMacroView('dashboard');
@@ -637,8 +654,7 @@ async function goToAthleteDetail(athleteId) {
         )
       ),
       fitnesstime_misure_bia (
-        id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg,
-        acqua_perc, grasso_viscerale, note
+        id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l
       )
     `)
     .eq('id', athleteId)
@@ -684,6 +700,9 @@ function renderAthleteDetail() {
       ${a.note ? `<p class="muted">${icon('message')} ${escapeHtml(a.note)}</p>` : ''}
       <button type="button" class="btn btn-secondary btn-block" id="simulate-btn" ${schedaAttiva ? '' : 'disabled'}>
         ${icon('eye')} Simula Allenamento (Vista Atleta)
+      </button>
+      <button type="button" class="btn btn-secondary btn-block" id="delete-athlete-btn">
+        ${icon('trash')} Elimina atleta
       </button>
     </div>
 
@@ -735,6 +754,9 @@ function renderAthleteDetail() {
       </div>
     `).join('') : emptyState('clipboard', 'Nessuna scheda assegnata. Usa "+ Assegna Nuova Scheda" per crearne una.')}
   `;
+
+  const delAthleteBtn = $('#delete-athlete-btn');
+  if (delAthleteBtn) delAthleteBtn.addEventListener('click', () => confirmAndDeleteAthlete(a));
 
   const simBtn = $('#simulate-btn');
   if (simBtn) simBtn.addEventListener('click', () => startSimulate(a, schedaAttiva));
@@ -830,19 +852,75 @@ function biaMetricHtml(label, value, unit, deltaHtml) {
   `;
 }
 
+const BIA_COLS = "id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l";
+
+function biaR(x) { return Math.round(x * 10) / 10; }
+function biaPct(part, whole) {
+  if (part == null || whole == null || !(Number(whole) > 0)) return null;
+  return biaR((Number(part) / Number(whole)) * 100);
+}
+
+/* Valori derivati (non salvati): BMI e percentuali come nel PDF dello strumento. */
+function biaCalc(m) {
+  const h = m.altezza_cm != null ? Number(m.altezza_cm) / 100 : null;
+  return {
+    bmi: h && m.peso_kg != null ? biaR(Number(m.peso_kg) / (h * h)) : null,
+    ffm_p: biaPct(m.massa_magra_kg, m.peso_kg),
+    fm_p: biaPct(m.massa_grassa_kg, m.peso_kg),
+    smm_p: biaPct(m.smm_kg, m.peso_kg),
+    asmm_p: biaPct(m.asmm_kg, m.peso_kg),
+    tbw_p: biaPct(m.tbw_l, m.peso_kg),
+    ecw_tbw: biaPct(m.ecw_l, m.tbw_l),
+    icw_tbw: biaPct(m.icw_l, m.tbw_l),
+    bcm_ffm: biaPct(m.bcm_kg, m.massa_magra_kg),
+  };
+}
+
+function biaDettagliHtml(m) {
+  const c = biaCalc(m);
+  const v = (x, u) => (x != null && x !== '' ? `${escapeHtml(String(x))}${u ? ' ' + u : ''}` : '–');
+  const rows = [
+    ['Peso', v(m.peso_kg, 'kg'), 'Altezza', v(m.altezza_cm, 'cm')],
+    ['BMI', v(c.bmi), 'PhA', v(m.pha_gradi, '°')],
+    ['BMR', v(m.bmr_kcal, 'kcal'), 'BCMI', v(m.bcmi)],
+    ['RZ', v(m.rz_ohm, 'Ohm'), 'XC', v(m.xc_ohm, 'Ohm')],
+    ['FFM', v(m.massa_magra_kg, 'kg'), 'FFM / Peso', v(c.ffm_p, '%')],
+    ['FM', v(m.massa_grassa_kg, 'kg'), 'FM / Peso', v(c.fm_p, '%')],
+    ['BCM', v(m.bcm_kg, 'kg'), 'BCM / FFM', v(c.bcm_ffm, '%')],
+    ['SMM', v(m.smm_kg, 'kg'), 'SMM / Peso', v(c.smm_p, '%')],
+    ['ASMM', v(m.asmm_kg, 'kg'), 'ASMM / Peso', v(c.asmm_p, '%')],
+    ['TBW', v(m.tbw_l, 'L'), 'TBW / Peso', v(c.tbw_p, '%')],
+    ['ECW', v(m.ecw_l, 'L'), 'ECW / TBW', v(c.ecw_tbw, '%')],
+    ['ICW', v(m.icw_l, 'L'), 'ICW / TBW', v(c.icw_tbw, '%')],
+  ];
+  return `
+    <details class="bia-more">
+      <summary>Tutti i valori (${fmtDate(m.data_rilevazione)})</summary>
+      <table class="bia-detail-table"><tbody>
+        ${rows.map((r) => `<tr><th>${r[0]}</th><td>${r[1]}</td><th>${r[2]}</th><td>${r[3]}</td></tr>`).join('')}
+      </tbody></table>
+      ${m.note ? `<p class="muted" style="margin-top:8px;">${icon('message')} ${escapeHtml(m.note)}</p>` : ''}
+    </details>
+  `;
+}
+
 function biaSectionHtml(athlete) {
   const misure = athlete.fitnesstime_misure_bia || [];
   const ultima = misure[0] || null;
-  const precedente = misure[1] || null;
+  const prec = misure[1] || null;
+  const pv = (k) => (prec ? prec[k] : null);
 
   const summary = ultima ? `
     <p class="muted" style="margin-bottom:10px;">Ultima rilevazione: ${fmtDate(ultima.data_rilevazione)}</p>
     <div class="bia-metric-grid">
-      ${biaMetricHtml('Peso', ultima.peso_kg, 'kg', biaDeltaBadge(ultima.peso_kg, precedente && precedente.peso_kg, 'kg', false))}
-      ${biaMetricHtml('Massa Grassa', ultima.massa_grassa_perc, '%', biaDeltaBadge(ultima.massa_grassa_perc, precedente && precedente.massa_grassa_perc, '%', false))}
-      ${biaMetricHtml('Massa Magra', ultima.massa_magra_kg, 'kg', biaDeltaBadge(ultima.massa_magra_kg, precedente && precedente.massa_magra_kg, 'kg', true))}
-      ${biaMetricHtml('Idratazione', ultima.acqua_perc, '%', biaDeltaBadge(ultima.acqua_perc, precedente && precedente.acqua_perc, '%', true))}
+      ${biaMetricHtml('Peso', ultima.peso_kg, 'kg', biaDeltaBadge(ultima.peso_kg, pv('peso_kg'), 'kg', false))}
+      ${biaMetricHtml('Massa Grassa', ultima.massa_grassa_perc, '%', biaDeltaBadge(ultima.massa_grassa_perc, pv('massa_grassa_perc'), '%', false))}
+      ${biaMetricHtml('Massa Magra', ultima.massa_magra_kg, 'kg', biaDeltaBadge(ultima.massa_magra_kg, pv('massa_magra_kg'), 'kg', true))}
+      ${biaMetricHtml('Muscolo (SMM)', ultima.smm_kg, 'kg', biaDeltaBadge(ultima.smm_kg, pv('smm_kg'), 'kg', true))}
+      ${biaMetricHtml('Idratazione', ultima.acqua_perc, '%', biaDeltaBadge(ultima.acqua_perc, pv('acqua_perc'), '%', true))}
+      ${biaMetricHtml('Angolo di fase', ultima.pha_gradi, '°', biaDeltaBadge(ultima.pha_gradi, pv('pha_gradi'), '°', true))}
     </div>
+    ${biaDettagliHtml(ultima)}
   ` : '<p class="muted" style="margin-bottom:10px;">Nessuna rilevazione BIA registrata.</p>';
 
   const storico = misure.length ? `
@@ -881,6 +959,8 @@ function openBiaModal(athleteId) {
   $('#bia-form').reset();
   $('#bia-error').hidden = true;
   $('#bia-data').value = new Date().toISOString().slice(0, 10);
+  $('#bia-calcoli').hidden = true;
+  const more = $('#bia-form .bia-more'); if (more) more.open = false;
   $('#bia-overlay').hidden = false;
   $('#bia-overlay').dataset.athleteId = athleteId;
   $('#bia-peso').focus();
@@ -894,46 +974,81 @@ $('#bia-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'bia-overlay') closeBiaModal();
 });
 
+function biaReadForm() {
+  const n = (id) => {
+    const raw = $(id).value.trim().replace(',', '.');
+    if (raw === '') return null;
+    const x = parseFloat(raw);
+    return Number.isFinite(x) ? x : null;
+  };
+  return {
+    data_rilevazione: $('#bia-data').value,
+    peso_kg: n('#bia-peso'),
+    altezza_cm: n('#bia-altezza'),
+    pha_gradi: n('#bia-pha'),
+    massa_magra_kg: n('#bia-magra'),
+    massa_grassa_kg: n('#bia-fm'),
+    smm_kg: n('#bia-smm'),
+    tbw_l: n('#bia-tbw'),
+    rz_ohm: n('#bia-rz'),
+    xc_ohm: n('#bia-xc'),
+    bmr_kcal: n('#bia-bmr'),
+    bcmi: n('#bia-bcmi'),
+    bcm_kg: n('#bia-bcm'),
+    asmm_kg: n('#bia-asmm'),
+    ecw_l: n('#bia-ecw'),
+    icw_l: n('#bia-icw'),
+  };
+}
+
+$('#bia-form').addEventListener('input', () => {
+  const m = biaReadForm();
+  const c = biaCalc(m);
+  const parts = [];
+  if (c.bmi != null) parts.push(`BMI ${c.bmi}`);
+  if (c.fm_p != null) parts.push(`Grasso ${c.fm_p}%`);
+  if (c.ffm_p != null) parts.push(`Magra ${c.ffm_p}%`);
+  if (c.smm_p != null) parts.push(`Muscolo ${c.smm_p}%`);
+  if (c.tbw_p != null) parts.push(`Acqua ${c.tbw_p}%`);
+  const el = $('#bia-calcoli');
+  el.textContent = parts.length ? 'Calcolati: ' + parts.join(' · ') : '';
+  el.hidden = !parts.length;
+});
+
 $('#bia-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const athleteId = $('#bia-overlay').dataset.athleteId;
   const errEl = $('#bia-error');
   errEl.hidden = true;
 
-  const data_rilevazione = $('#bia-data').value;
-  const peso_kg = parseFloat($('#bia-peso').value);
-  const massa_grassa_perc = $('#bia-grasso').value ? parseFloat($('#bia-grasso').value) : null;
-  const massa_magra_kg = $('#bia-magra').value ? parseFloat($('#bia-magra').value) : null;
-  const acqua_perc = $('#bia-acqua').value ? parseFloat($('#bia-acqua').value) : null;
-  const grasso_viscerale = $('#bia-viscerale').value ? parseFloat($('#bia-viscerale').value) : null;
+  const m = biaReadForm();
   const note = $('#bia-note').value.trim();
 
-  if (!data_rilevazione || Number.isNaN(peso_kg)) {
+  if (!m.data_rilevazione || m.peso_kg == null || m.peso_kg <= 0) {
     errEl.textContent = 'Inserisci almeno data e peso.';
     errEl.hidden = false;
     return;
   }
 
+  const c = biaCalc(m);
+  const payload = {
+    atleta_id: athleteId,
+    ...m,
+    // percentuali "storiche" usate da riepilogo e storico, calcolate dai kg/litri
+    massa_grassa_perc: c.fm_p,
+    acqua_perc: c.tbw_p,
+    note: note || null,
+  };
+
   const submitBtn = $('#bia-submit');
   submitBtn.disabled = true;
 
   try {
-    // upsert: una rilevazione al giorno per atleta (vedi unique
-    // atleta_id/data_rilevazione in fitnesstime_migration_bia.sql) — se il
-    // coach ricompila la stessa data corregge la riga invece di duplicarla.
+    // upsert: una rilevazione al giorno per atleta (unique atleta_id/data_rilevazione)
     const { data, error } = await sb
       .from('fitnesstime_misure_bia')
-      .upsert({
-        atleta_id: athleteId,
-        data_rilevazione,
-        peso_kg,
-        massa_grassa_perc,
-        massa_magra_kg,
-        acqua_perc,
-        grasso_viscerale,
-        note: note || null,
-      }, { onConflict: 'atleta_id,data_rilevazione' })
-      .select('id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note')
+      .upsert(payload, { onConflict: 'atleta_id,data_rilevazione' })
+      .select(BIA_COLS)
       .single();
     if (error) throw error;
 
@@ -942,7 +1057,7 @@ $('#bia-form').addEventListener('submit', async (e) => {
 
     if (state.selectedAthlete && state.selectedAthlete.id === athleteId) {
       const altre = (state.selectedAthlete.fitnesstime_misure_bia || [])
-        .filter((m) => m.data_rilevazione !== data.data_rilevazione);
+        .filter((x) => x.data_rilevazione !== data.data_rilevazione);
       state.selectedAthlete.fitnesstime_misure_bia = [...altre, data]
         .sort((x, y) => (x.data_rilevazione < y.data_rilevazione ? 1 : -1));
       renderAthleteDetail();

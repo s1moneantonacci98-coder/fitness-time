@@ -4,7 +4,7 @@
  * network-first per le chiamate API verso Supabase.
  * Aggiornare CACHE_VERSION ad ogni release per invalidare la cache.
  */
-const CACHE_VERSION = 'fitnesstime-v10';
+const CACHE_VERSION = 'fitnesstime-v11';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
 const APP_SHELL = [

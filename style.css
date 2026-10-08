@@ -1057,3 +1057,18 @@ main#view-dashboard, main#view-athlete-detail {
 .scheda-collassabile.is-collapsed .scheda-chevron { transform: rotate(-90deg); }
 .scheda-collassabile.is-collapsed .scheda-body { display: none; }
 .scheda-collassabile.is-collapsed .scheda-toggle { margin-bottom: 0; }
+
+/* Frecce spostamento esercizi */
+.exercise-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.move-btns { display: flex; flex-direction: column; gap: 4px; }
+.icon-btn-move {
+  width: 32px; height: 22px; min-height: 22px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--surface-2, rgba(255,255,255,.06)); color: var(--text-muted);
+  border: 1px solid var(--border-soft); border-radius: 8px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.icon-btn-move .icon { width: 14px; height: 14px; }
+.icon-btn-move-down .icon { transform: rotate(180deg); }
+.icon-btn-move:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
+.icon-btn-move:disabled { opacity: .3; cursor: default; }

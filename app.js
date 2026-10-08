@@ -111,6 +111,7 @@ const ICONS = {
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.3"/><circle cx="17.5" cy="6" r="2.3"/><circle cx="17.5" cy="18" r="2.3"/><path d="M8 11l7.5-4M8 13l7.5 4"/></svg>',
   download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M4.5 19.5h15"/></svg>',
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>',
   chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>',
 };
@@ -747,7 +748,7 @@ function renderAthleteDetail() {
               </div>
             </div>
             ${(s.fitnesstime_esercizi || []).length
-              ? (s.fitnesstime_esercizi || []).map((ex) => `
+              ? (s.fitnesstime_esercizi || []).map((ex, exIdx, exList) => `
                 <div class="exercise-row-line" data-esercizio-id="${ex.id}">
                   <div class="exercise-row-info">
                     <span class="exercise-row-name">${escapeHtml(ex.nome)}</span>
@@ -755,7 +756,13 @@ function renderAthleteDetail() {
                     ${ex.tecnica ? `<span class="exercise-row-tecnica">${escapeHtml(ex.tecnica)}</span>` : ''}
                     ${ex.note_tecniche ? `<span class="exercise-row-note">${icon('bulb')}${escapeHtml(ex.note_tecniche)}</span>` : ''}
                   </div>
-                  <button type="button" class="icon-btn-remove" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">${icon('close')}</button>
+                  <div class="exercise-row-actions">
+                    <div class="move-btns">
+                      <button type="button" class="icon-btn-move" data-move-esercizio="${ex.id}" data-dir="-1" aria-label="Sposta su" title="Sposta su" ${exIdx === 0 ? 'disabled' : ''}>${icon('up')}</button>
+                      <button type="button" class="icon-btn-move icon-btn-move-down" data-move-esercizio="${ex.id}" data-dir="1" aria-label="Sposta giù" title="Sposta giù" ${exIdx === exList.length - 1 ? 'disabled' : ''}>${icon('up')}</button>
+                    </div>
+                    <button type="button" class="icon-btn-remove" data-remove-esercizio="${ex.id}" aria-label="Rimuovi esercizio" title="Rimuovi esercizio">${icon('close')}</button>
+                  </div>
                 </div>
               `).join('')
               : '<p class="muted" style="font-size:13px;">Nessun esercizio in questo giorno.</p>'}
@@ -809,6 +816,13 @@ function renderAthleteDetail() {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       activateScheda(btn.dataset.activateScheda);
+    });
+  });
+
+  $$('[data-move-esercizio]', el).forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      moveEsercizio(btn.dataset.moveEsercizio, Number(btn.dataset.dir));
     });
   });
 
@@ -1157,6 +1171,43 @@ async function activateScheda(schedaId) {
     await loadAthletes();
   } catch (err) {
     toast('Errore nell\'attivazione della scheda: ' + ((err && err.message) || 'riprova.'), 'error');
+  }
+}
+
+/* Sposta un esercizio su (-1) o giù (+1) nel suo giorno e rinumera 'ordine' (1..n). */
+let moveInCorso = false;
+async function moveEsercizio(esercizioId, dir) {
+  if (moveInCorso || !state.selectedAthlete) return;
+  let sessione = null;
+  (state.selectedAthlete.fitnesstime_schede || []).forEach((sc) => {
+    (sc.fitnesstime_sessioni || []).forEach((s) => {
+      if ((s.fitnesstime_esercizi || []).some((ex) => ex.id === esercizioId)) sessione = s;
+    });
+  });
+  if (!sessione) return;
+  const lista = sessione.fitnesstime_esercizi;
+  const i = lista.findIndex((ex) => ex.id === esercizioId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= lista.length) return;
+
+  const nuova = lista.slice();
+  [nuova[i], nuova[j]] = [nuova[j], nuova[i]];
+  const modificati = [];
+  nuova.forEach((ex, k) => { if (ex.ordine !== k + 1) modificati.push({ id: ex.id, ordine: k + 1 }); });
+
+  moveInCorso = true;
+  try {
+    const res = await Promise.all(modificati.map((m) =>
+      sb.from('fitnesstime_esercizi').update({ ordine: m.ordine }).eq('id', m.id)));
+    const fallita = res.find((r) => r.error);
+    if (fallita) throw fallita.error;
+    nuova.forEach((ex, k) => { ex.ordine = k + 1; });
+    sessione.fitnesstime_esercizi = nuova;
+    renderAthleteDetail();
+  } catch (err) {
+    toast('Errore nello spostamento: ' + ((err && err.message) || 'riprova.'), 'error');
+  } finally {
+    moveInCorso = false;
   }
 }
 

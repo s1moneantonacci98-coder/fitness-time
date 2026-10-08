@@ -220,3 +220,103 @@ async function shareSchedaPdf(athlete, scheda) {
   window.open(`https://wa.me/${tel}?text=${encodeURIComponent(testo)}`, '_blank', 'noopener');
   return 'fallback';
 }
+
+
+/* =====================================================================
+ * MISURE ANTROPOMETRICHE — campi condivisi + PDF "Storico misure"
+ * ===================================================================== */
+const MISURE_GRUPPI = [
+  { titolo: 'CIRCONFERENZE E PESO', campi: [
+    { k: 'peso_kg', label: 'Peso', unit: 'kg' },
+    { k: 'petto_cm', label: 'Petto', unit: 'cm' },
+    { k: 'bicipiti_cm', label: 'Bicipiti', unit: 'cm' },
+    { k: 'interno_coscia_cm', label: 'Interno coscia', unit: 'cm' },
+    { k: 'polpaccio_cm', label: 'Polpaccio', unit: 'cm' },
+    { k: 'vita_cm', label: 'Vita', unit: 'cm' },
+    { k: 'spalle_cm', label: 'Spalle', unit: 'cm' },
+    { k: 'ginocchio_cm', label: 'Ginocchio', unit: 'cm' },
+  ] },
+  { titolo: 'PLICHE CUTANEE', campi: [
+    { k: 'plica_tricipitale', label: 'Tricipitale', unit: '%' },
+    { k: 'plica_ombelicale', label: 'Ombelicale', unit: '%' },
+    { k: 'plica_iliaca', label: 'Iliaca', unit: '%' },
+    { k: 'plica_pettorale', label: 'Pettorale', unit: '%' },
+    { k: 'plica_ascellare', label: 'Ascellare', unit: '%' },
+    { k: 'plica_scapolare', label: 'Scapolare', unit: '%' },
+    { k: 'plica_gamba', label: 'Gamba', unit: '%' },
+  ] },
+];
+
+function misureValore(m, campo) {
+  const v = m[campo.k];
+  if (v == null || v === '') return '-';
+  return `${String(v).replace(/\.0+$/, '')} ${campo.unit}`;
+}
+
+function misureFileName(athlete) {
+  const base = `Storico misure ${athlete.nome || ''} ${athlete.cognome || ''}`.trim().replace(/\s+/g, '_');
+  return base.replace(/[^\w\-]/g, '') + '.pdf';
+}
+
+function buildMisurePdf(athlete, misureDesc) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const FONT = pdfSetupFonts(doc) ? 'DejaVuSans' : 'helvetica';
+  const PW = doc.internal.pageSize.getWidth();
+  const PH = doc.internal.pageSize.getHeight();
+  const X0 = 40, X1 = PW - 40, TW = X1 - X0;
+  const misure = (misureDesc || []).slice().sort((a, b) => (a.data_rilevazione < b.data_rilevazione ? -1 : 1));
+  const PER_PAGE = 5;
+  const chunks = [];
+  for (let i = 0; i < misure.length; i += PER_PAGE) chunks.push(misure.slice(i, i + PER_PAGE));
+  if (!chunks.length) chunks.push([]);
+  const nome = `${athlete.nome || ''}`.trim().toUpperCase();
+  const fmt = (d) => { const [y, m, g] = String(d).split('-'); return `${g}/${m}/${y}`; };
+
+  chunks.forEach((chunk, pi) => {
+    if (pi > 0) doc.addPage();
+    doc.setFont(FONT, 'bold'); doc.setFontSize(15); doc.setTextColor(30, 30, 30);
+    doc.text(`STORICO MISURE ANTROPOMETRICHE - ${nome}`, PW / 2, 60, { align: 'center' });
+    doc.setFont(FONT, 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
+    doc.text('Rilevazioni riportate in ordine cronologico.', PW / 2, 74, { align: 'center' });
+
+    let y = 100;
+    const labelW = 120;
+    const colW = chunk.length ? (TW - labelW) / chunk.length : TW - labelW;
+    const rowH = 19;
+    MISURE_GRUPPI.forEach((g) => {
+      doc.setFont(FONT, 'bold'); doc.setFontSize(10); doc.setTextColor(30, 30, 30);
+      doc.text(g.titolo, X0, y);
+      y += 8;
+      // intestazione nera con le date
+      doc.setFillColor(20, 20, 20);
+      doc.rect(X0, y, TW, rowH, 'F');
+      doc.setFont(FONT, 'bold'); doc.setFontSize(8); doc.setTextColor(255, 255, 255);
+      chunk.forEach((m, i) => doc.text(fmt(m.data_rilevazione), X0 + labelW + colW * i + colW / 2, y + 12.5, { align: 'center' }));
+      y += rowH;
+      g.campi.forEach((c, r) => {
+        if (r % 2 === 1) { doc.setFillColor(245, 245, 245); doc.rect(X0, y, TW, rowH, 'F'); }
+        doc.setFillColor(232, 232, 232); doc.rect(X0, y, labelW, rowH, 'F');
+        doc.setFont(FONT, 'bold'); doc.setFontSize(8); doc.setTextColor(40, 40, 40);
+        doc.text(c.label, X0 + 6, y + 12.5);
+        doc.setFont(FONT, 'normal');
+        chunk.forEach((m, i) => doc.text(misureValore(m, c), X0 + labelW + colW * i + colW / 2, y + 12.5, { align: 'center' }));
+        doc.setDrawColor(181, 181, 181); doc.setLineWidth(0.4);
+        doc.line(X0, y + rowH, X1, y + rowH);
+        y += rowH;
+      });
+      doc.setDrawColor(181, 181, 181);
+      doc.rect(X0, y - rowH * (g.campi.length + 1), TW, rowH * (g.campi.length + 1), 'S');
+      y += 26;
+    });
+
+    doc.setFont(FONT, 'normal'); doc.setFontSize(7); doc.setTextColor(130, 130, 130);
+    doc.text(`Fitness Time Club | Storico antropometrico | Pagina ${pi + 1}`, PW / 2, PH - 28, { align: 'center' });
+  });
+  return doc;
+}
+
+function downloadMisurePdf(athlete, misureDesc) {
+  const doc = buildMisurePdf(athlete, misureDesc);
+  downloadBlob(doc.output('blob'), misureFileName(athlete));
+}

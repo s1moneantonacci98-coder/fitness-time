@@ -1072,3 +1072,13 @@ main#view-dashboard, main#view-athlete-detail {
 .icon-btn-move-down .icon { transform: rotate(180deg); }
 .icon-btn-move:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
 .icon-btn-move:disabled { opacity: .3; cursor: default; }
+
+/* Misure antropometriche */
+.antrop-group { margin: 14px 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .08em; color: var(--text-muted); }
+.antrop-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border-soft); border-radius: 10px; }
+.antrop-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.antrop-table th, .antrop-table td { padding: 8px 10px; text-align: center; white-space: nowrap; border-bottom: 1px solid var(--border-soft); }
+.antrop-table thead th { background: #000; color: #fff; font-size: 11px; font-weight: 700; }
+.antrop-table tbody th { text-align: left; position: sticky; left: 0; background: var(--surface, #1c1816); color: var(--text); font-weight: 700; }
+.antrop-table tbody tr:last-child th, .antrop-table tbody tr:last-child td { border-bottom: none; }
+#antrop-campi .antrop-group:first-child { margin-top: 4px; }

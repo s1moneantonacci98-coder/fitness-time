@@ -386,3 +386,10 @@ Fitness Time/
 ├── 1.jpg, 2.jpg             (immagini di contesto fornite dall'utente)
 └── Scheda base/             (s1-s4.jpg: foto del modulo cartaceo esercizi, origine del catalogo)
 ```
+
+## Aggiornamento 2026-10-08
+- Schede atleta comprimibili/espandibili (stato in localStorage).
+- Service worker network-first (cache v12): gli aggiornamenti si vedono subito, la cache serve solo offline.
+- Frecce ▲▼ per spostare gli esercizi nel giorno (rinumera `ordine` su `fitnesstime_esercizi`).
+- Misure antropometriche: nuova tabella `fitnesstime_misure_antropometriche` (peso, 7 circonferenze cm, 7 pliche %; una riga per atleta/data, RLS come BIA). UI: sezione nel profilo atleta con storico a colonne per data, modale "+ Nuove misure", PDF "Storico misure". Migrazione: `fitnesstime_migration_antropometria.sql` (applicata).
+- Nota sicurezza: le tabelle fitnesstime_* hanno policy anon permissive (modalità demo senza login); da restringere quando si attiva il login reale di Andrea.

@@ -1,9 +1,9 @@
--- ATTENZIONE: NON ANCORA APPLICATA al database (in attesa di conferma di Simone).
 -- Fitness Time Club — Migrazione: Misure antropometriche (circonferenze, peso, pliche)
 -- Solo oggetti prefissati fitnesstime_. Idempotente. Stesso perimetro RLS di fitnesstime_misure_bia.
+-- APPLICATA su Supabase il 2026-10-08.
 begin;
 
-create table if not exists public.fitnesstime_misure_antropometriche (
+create table public.fitnesstime_misure_antropometriche (
   id                uuid primary key default gen_random_uuid(),
   atleta_id         uuid not null references public.fitnesstime_profiles(id) on delete cascade,
   data_rilevazione  date not null default current_date,
@@ -32,16 +32,14 @@ create table if not exists public.fitnesstime_misure_antropometriche (
 comment on table public.fitnesstime_misure_antropometriche is
   'Storico misure antropometriche per atleta: peso, circonferenze (cm) e pliche cutanee. Una riga per atleta/data_rilevazione (upsert).';
 
-create index if not exists fitnesstime_misure_antrop_atleta_idx
+create index fitnesstime_misure_antrop_atleta_idx
   on public.fitnesstime_misure_antropometriche (atleta_id, data_rilevazione desc);
 
 alter table public.fitnesstime_misure_antropometriche enable row level security;
 
-drop policy if exists fitnesstime_misure_antrop_select on public.fitnesstime_misure_antropometriche;
 create policy fitnesstime_misure_antrop_select on public.fitnesstime_misure_antropometriche
   for select using (atleta_id = public.fitnesstime_profile_id() or public.fitnesstime_is_staff());
 
-drop policy if exists fitnesstime_misure_antrop_staff_write on public.fitnesstime_misure_antropometriche;
 create policy fitnesstime_misure_antrop_staff_write on public.fitnesstime_misure_antropometriche
   for all using (public.fitnesstime_is_staff()) with check (public.fitnesstime_is_staff());
 
@@ -50,13 +48,9 @@ grant insert, update, delete on public.fitnesstime_misure_antropometriche to aut
 
 -- Perimetro "demo/anon" (Dashboard Istruttore senza login reale), come per le altre tabelle fitnesstime_*
 grant select, insert, update, delete on public.fitnesstime_misure_antropometriche to anon;
-drop policy if exists fitnesstime_demo_anon_antrop_select on public.fitnesstime_misure_antropometriche;
 create policy fitnesstime_demo_anon_antrop_select on public.fitnesstime_misure_antropometriche for select to anon using (true);
-drop policy if exists fitnesstime_demo_anon_antrop_insert on public.fitnesstime_misure_antropometriche;
 create policy fitnesstime_demo_anon_antrop_insert on public.fitnesstime_misure_antropometriche for insert to anon with check (true);
-drop policy if exists fitnesstime_demo_anon_antrop_update on public.fitnesstime_misure_antropometriche;
 create policy fitnesstime_demo_anon_antrop_update on public.fitnesstime_misure_antropometriche for update to anon using (true) with check (true);
-drop policy if exists fitnesstime_demo_anon_antrop_delete on public.fitnesstime_misure_antropometriche;
 create policy fitnesstime_demo_anon_antrop_delete on public.fitnesstime_misure_antropometriche for delete to anon using (true);
 
 commit;

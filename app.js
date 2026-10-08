@@ -657,11 +657,13 @@ async function goToAthleteDetail(athleteId) {
       ),
       fitnesstime_misure_bia (
         id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l
-      )
+      ),
+      fitnesstime_misure_antropometriche (${ANTROP_COLS})
     `)
     .eq('id', athleteId)
     .order('created_at', { referencedTable: 'fitnesstime_schede', ascending: false })
     .order('data_rilevazione', { referencedTable: 'fitnesstime_misure_bia', ascending: false })
+    .order('data_rilevazione', { referencedTable: 'fitnesstime_misure_antropometriche', ascending: false })
     .single();
 
   if (error || !data) {
@@ -680,6 +682,7 @@ async function goToAthleteDetail(athleteId) {
       })),
   }));
   data.fitnesstime_misure_bia = data.fitnesstime_misure_bia || [];
+  data.fitnesstime_misure_antropometriche = data.fitnesstime_misure_antropometriche || [];
 
   state.selectedAthlete = data;
   renderAthleteDetail();
@@ -719,6 +722,8 @@ function renderAthleteDetail() {
     </div>
 
     ${biaSectionHtml(a)}
+
+    ${antropSectionHtml(a)}
 
     <button type="button" class="btn btn-primary btn-block" id="assign-scheda-btn">+ Assegna Nuova Scheda</button>
 
@@ -782,6 +787,14 @@ function renderAthleteDetail() {
   if (simBtn) simBtn.addEventListener('click', () => startSimulate(a, schedaAttiva));
 
   $('#assign-scheda-btn').addEventListener('click', () => openNewSchedaModal(a.id));
+
+  const antropBtn = $('#new-antrop-btn');
+  if (antropBtn) antropBtn.addEventListener('click', () => openAntropModal(a.id));
+  const antropPdfBtn = $('#antrop-pdf-btn');
+  if (antropPdfBtn) antropPdfBtn.addEventListener('click', () => {
+    try { downloadMisurePdf(a, a.fitnesstime_misure_antropometriche || []); toast('PDF scaricato ✔', 'success', 1800); }
+    catch (err) { toast('Errore nella creazione del PDF.', 'error'); }
+  });
 
   const biaBtn = $('#new-bia-btn');
   if (biaBtn) biaBtn.addEventListener('click', () => openBiaModal(a.id));
@@ -1113,6 +1126,115 @@ $('#bia-form').addEventListener('submit', async (e) => {
     errEl.hidden = false;
   } finally {
     submitBtn.disabled = false;
+  }
+});
+
+
+/* ---------------------------------------------------------------------
+ * SEZIONE: MISURE ANTROPOMETRICHE (circonferenze, peso, pliche) — vista coach
+ * ------------------------------------------------------------------- */
+const ANTROP_COLS = 'id, data_rilevazione, peso_kg, petto_cm, bicipiti_cm, interno_coscia_cm, polpaccio_cm, vita_cm, spalle_cm, ginocchio_cm, plica_tricipitale, plica_ombelicale, plica_iliaca, plica_pettorale, plica_ascellare, plica_scapolare, plica_gamba, note';
+
+function antropSectionHtml(athlete) {
+  const misure = (athlete.fitnesstime_misure_antropometriche || [])
+    .slice().sort((x, y) => (x.data_rilevazione < y.data_rilevazione ? -1 : 1)); // cronologico
+  const tabelle = misure.length ? MISURE_GRUPPI.map((g) => `
+    <p class="antrop-group">${escapeHtml(g.titolo)}</p>
+    <div class="antrop-scroll">
+      <table class="antrop-table">
+        <thead><tr><th></th>${misure.map((m) => `<th>${fmtDate(m.data_rilevazione)}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${g.campi.map((c) => `<tr><th scope="row">${escapeHtml(c.label)}</th>${misure.map((m) => `<td>${escapeHtml(misureValore(m, c))}</td>`).join('')}</tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('') : '<p class="muted" style="margin-bottom:10px;">Nessuna misura registrata.</p>';
+
+  return `
+    <div class="card" data-antrop-section>
+      <div class="exercise-head">
+        <h3 class="card-title card-title-icon" style="margin-bottom:0;">${icon('gauge')}<span>Misure antropometriche</span></h3>
+        <button type="button" class="btn btn-secondary btn-sm" id="new-antrop-btn">+ Nuove misure</button>
+      </div>
+      ${tabelle}
+      ${misure.length ? `<button type="button" class="btn btn-secondary btn-sm" id="antrop-pdf-btn" style="margin-top:12px;">${icon('download')} PDF storico</button>` : ''}
+    </div>
+  `;
+}
+
+function openAntropModal(athleteId) {
+  const box = $('#antrop-campi');
+  if (!box.dataset.built) {
+    box.innerHTML = MISURE_GRUPPI.map((g) => `
+      <p class="antrop-group">${escapeHtml(g.titolo)}</p>
+      <div class="bia-form-grid">
+        ${g.campi.map((c) => `
+          <label class="field">
+            <span>${escapeHtml(c.label)} (${escapeHtml(c.unit)})</span>
+            <input type="number" inputmode="decimal" step="0.1" min="0" data-antrop-campo="${c.k}">
+          </label>`).join('')}
+      </div>
+    `).join('');
+    box.dataset.built = '1';
+  }
+  $('#antrop-form').reset();
+  $('#antrop-error').hidden = true;
+  $('#antrop-data').value = new Date().toISOString().slice(0, 10);
+  $('#antrop-overlay').dataset.athleteId = athleteId;
+  $('#antrop-overlay').hidden = false;
+}
+function closeAntropModal() { $('#antrop-overlay').hidden = true; }
+
+$('#antrop-close').addEventListener('click', closeAntropModal);
+$('#antrop-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'antrop-overlay') closeAntropModal();
+});
+
+$('#antrop-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const athleteId = $('#antrop-overlay').dataset.athleteId;
+  const errEl = $('#antrop-error');
+  errEl.hidden = true;
+
+  const payload = { atleta_id: athleteId, data_rilevazione: $('#antrop-data').value, note: $('#antrop-note').value.trim() || null };
+  let compilati = 0;
+  $$('[data-antrop-campo]', $('#antrop-form')).forEach((inp) => {
+    const raw = inp.value.trim().replace(',', '.');
+    const x = raw === '' ? null : parseFloat(raw);
+    payload[inp.dataset.antropCampo] = Number.isFinite(x) ? x : null;
+    if (Number.isFinite(x)) compilati++;
+  });
+  if (!payload.data_rilevazione || !compilati) {
+    errEl.textContent = 'Inserisci la data e almeno una misura.';
+    errEl.hidden = false;
+    return;
+  }
+
+  const btn = $('#antrop-submit');
+  btn.disabled = true;
+  try {
+    // una rilevazione al giorno per atleta: stessa data = aggiorna
+    const { data, error } = await sb
+      .from('fitnesstime_misure_antropometriche')
+      .upsert(payload, { onConflict: 'atleta_id,data_rilevazione' })
+      .select(ANTROP_COLS)
+      .single();
+    if (error) throw error;
+
+    closeAntropModal();
+    toast('Misure salvate ✔', 'success', 1800);
+    if (state.selectedAthlete && state.selectedAthlete.id === athleteId) {
+      const altre = (state.selectedAthlete.fitnesstime_misure_antropometriche || [])
+        .filter((x) => x.data_rilevazione !== data.data_rilevazione);
+      state.selectedAthlete.fitnesstime_misure_antropometriche = [...altre, data]
+        .sort((x, y) => (x.data_rilevazione < y.data_rilevazione ? 1 : -1));
+      renderAthleteDetail();
+    }
+  } catch (err) {
+    errEl.textContent = 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
+    errEl.hidden = false;
+  } finally {
+    btn.disabled = false;
   }
 });
 

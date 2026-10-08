@@ -441,6 +441,28 @@
   </div>
 </div>
 
+<div id="antrop-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Nuove misure antropometriche">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">+ Nuove Misure</h3>
+      <button type="button" class="icon-btn" id="antrop-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <form id="antrop-form" class="auth-form">
+      <label class="field">
+        <span>Data rilevazione</span>
+        <input type="date" id="antrop-data" name="antrop-data" required>
+      </label>
+      <div id="antrop-campi"></div>
+      <label class="field">
+        <span>Note</span>
+        <input type="text" id="antrop-note" name="antrop-note" placeholder="Opzionale">
+      </label>
+      <p id="antrop-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="antrop-submit" class="btn btn-primary btn-block">Salva misure</button>
+    </form>
+  </div>
+</div>
+
 <!-- ================= TOAST ================= -->
 <div id="toast-container" class="toast-container" aria-live="polite"></div>
 

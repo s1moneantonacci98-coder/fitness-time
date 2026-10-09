@@ -419,3 +419,6 @@ Fitness Time/
 - Frecce ▲▼ per spostare gli esercizi nel giorno (rinumera `ordine` su `fitnesstime_esercizi`).
 - Misure antropometriche: nuova tabella `fitnesstime_misure_antropometriche` (peso, 7 circonferenze cm, 7 pliche %; una riga per atleta/data, RLS come BIA). UI: sezione nel profilo atleta con storico a colonne per data, modale "+ Nuove misure", PDF "Storico misure". Migrazione: `fitnesstime_migration_antropometria.sql` (applicata).
 - Nota sicurezza: le tabelle fitnesstime_* hanno policy anon permissive (modalità demo senza login); da restringere quando si attiva il login reale di Andrea.
+
+## Icone app (09/10/2026)
+- Icone PWA con il logo Fitness Time Club (logo 800x500 in icons/logo.jpg; icona = scritta + barra rossa + "club", senza "SSD a r.l."). Login con logo intero. Cache SW v15.

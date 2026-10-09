@@ -4,7 +4,7 @@
  * network-first per le chiamate API verso Supabase.
  * Aggiornare CACHE_VERSION ad ogni release per invalidare la cache.
  */
-const CACHE_VERSION = 'fitnesstime-v14';
+const CACHE_VERSION = 'fitnesstime-v15';
 const APP_SHELL_CACHE = `${CACHE_VERSION}-shell`;
 
 const APP_SHELL = [
@@ -22,6 +22,7 @@ const APP_SHELL = [
   './icons/icon-512-maskable.png',
   './icons/apple-touch-icon.png',
   './icons/favicon-32.png',
+  './icons/logo.jpg',
 ];
 
 self.addEventListener('install', (event) => {

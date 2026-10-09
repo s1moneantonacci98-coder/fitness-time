@@ -232,9 +232,9 @@ main#view-app {
 }
 
 .auth-logo {
-  width: 88px;
-  height: 88px;
-  border-radius: 22px;
+  width: min(240px, 72%);
+  height: auto;
+  border-radius: 14px;
   margin-bottom: 18px;
   box-shadow: 0 0 0 1px var(--border-soft), 0 16px 32px -14px rgba(255, 81, 54, 0.55);
 }

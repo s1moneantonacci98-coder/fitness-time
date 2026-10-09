@@ -360,6 +360,15 @@ Andrea inserisce a mano i valori misurati dal PDF del suo strumento BIA; non si 
 - SW `fitnesstime-v10`. Smoke test aggiornato (DEMO_MODE off, nessun controllo riservato nella vista utente).
 - **Limiti noti**: la registrazione libera dalla schermata login crea comunque un profilo atleta senza schede; "Simula Allenamento" resta solo per Andrea.
 
+## 3decies. REGISTRAZIONE AUTONOMA ATLETI (attiva ora — 2026-10-09)
+- Registrazione dalla schermata di login: email, password (min 6), nome, cognome, telefono (tutti obbligatori), spunta privacy con informativa (testo bozza, versione `PRIVACY_VERSIONE` in app.js — da far rivedere al titolare). Nessun codice palestra, conferma email disattivata (come tutte le altre palestre dello stesso Supabase).
+- "Password dimenticata?": `resetPasswordForEmail` con redirect alla stessa pagina; evento `PASSWORD_RECOVERY` mostra l'overlay "Nuova password" (`updateUser`). Richiede `https://fitnesstimeclub.vercel.app/**` tra i Redirect URLs di Supabase Auth.
+- Account esistente senza profilo Fitness Time (es. nato in un'altra palestra): overlay "Completa il profilo" -> RPC `fitnesstime_ensure_profile` (sempre ruolo `athlete`, solo per `auth.uid()`).
+- DB (migrazione `fitnesstime_registrazione_privacy`, additiva): colonne `fitnesstime_profiles.consenso_privacy_at`, `consenso_privacy_versione`; trigger `fitnesstime_handle_new_user` aggiornato (salva il consenso, resta limitato a `app='fitnesstime'`); RPC `fitnesstime_ensure_profile(nome,cognome,telefono,privacy,versione)` con execute solo a `authenticated`.
+- Dashboard staff: badge "Nuovo" per atleti registrati da meno di 7 giorni e senza scheda.
+- Nota sicurezza (preesistente, Auth condiviso): il trigger `collega_scheda_orfana` di un'altra app collega un cliente ASD orfano con la stessa email a ogni nuovo utente: con conferma email disattivata chi si registra con l'email altrui potrebbe essere collegato a quella scheda. Valutare di riattivare la conferma email o correggere quel trigger.
+- Service worker: `fitnesstime-v14`.
+
 ## 4. Prossimi step prioritari
 
 1. **Deploy su Vercel**: creare/collegare il progetto Vercel al repository Git di questa

@@ -1117,3 +1117,9 @@ body.is-athlete #view-athlete-home input { -webkit-user-select: text; user-selec
 /* Tabella storico BIA: scorre in orizzontale invece di sbordare dalla card (colonna Online/Nascosta) */
 .bia-history-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .bia-toggle { white-space: nowrap; }
+
+/* ---- Registrazione / privacy ---- */
+.link-inline { color: var(--ember); text-decoration: underline; }
+.privacy-text { font-size: 14px; line-height: 1.5; color: var(--text); max-height: 52vh; overflow-y: auto; margin: 4px 0 14px; }
+.privacy-text p { margin: 0 0 10px; }
+.badge-nuovo { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: var(--gold-soft); color: var(--gold); border: 1px solid var(--gold-dark); margin-right: 6px; }

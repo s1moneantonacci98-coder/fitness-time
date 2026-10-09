@@ -8,6 +8,7 @@
  * ------------------------------------------------------------------- */
 const SUPABASE_URL = 'https://gsuyrptpycrgznqjtbtx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_W-2_EuqFH0u3vFNg8gwW0g_T7byZ8uF';
+const PRIVACY_VERSIONE = '2026-10';
 const APP_TAG = 'fitnesstime'; // deve combaciare con il trigger fitnesstime_handle_new_user
 
 /* ---------------------------------------------------------------------
@@ -56,6 +57,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
  * STATO APPLICATIVO
  * ------------------------------------------------------------------- */
 const state = {
+  recovery: false,
   user: null,
   profile: null,      // riga fitnesstime_profiles (atleta "attivo": vero utente loggato, o atleta simulato dal coach)
   schede: [],          // tutte le schede dell'atleta corrente (con sessioni/esercizi annidati)
@@ -240,6 +242,11 @@ function setAuthMode(mode) {
   $('#auth-toggle-mode').textContent = mode === 'signup'
     ? 'Hai già un account? Accedi'
     : 'Non hai un account? Registrati';
+  $('#auth-forgot').hidden = mode === 'signup';
+  $('#auth-password').autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
+  $('#auth-intro').textContent = mode === 'signup'
+    ? 'Crea il tuo account per vedere scheda e misure.'
+    : 'Accedi per vedere la tua scheda e le tue misure.';
   $('#auth-error').hidden = true;
 }
 
@@ -247,17 +254,32 @@ $('#auth-toggle-mode').addEventListener('click', () => {
   setAuthMode(authMode === 'signup' ? 'signin' : 'signup');
 });
 
+function showAuthError(msg) {
+  const errEl = $('#auth-error');
+  errEl.textContent = msg;
+  errEl.hidden = false;
+}
+
 $('#auth-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = $('#auth-email').value.trim();
   const password = $('#auth-password').value;
-  const errEl = $('#auth-error');
-  errEl.hidden = true;
-  $('#auth-submit').disabled = true;
+  $('#auth-error').hidden = true;
 
+  if (authMode === 'signup') {
+    const nome = $('#auth-nome').value.trim();
+    const cognome = $('#auth-cognome').value.trim();
+    const telefono = $('#auth-telefono').value.trim();
+    if (!nome || !cognome) return showAuthError('Inserisci nome e cognome.');
+    if (telefono.replace(/\D/g, '').length < 6) return showAuthError('Inserisci un numero di telefono valido.');
+    if (password.length < 6) return showAuthError('La password deve avere almeno 6 caratteri.');
+    if (!$('#auth-privacy').checked) return showAuthError('Per registrarti devi accettare l\'informativa privacy.');
+  }
+
+  $('#auth-submit').disabled = true;
   try {
     if (authMode === 'signup') {
-      const { error } = await sb.auth.signUp({
+      const { data, error } = await sb.auth.signUp({
         email,
         password,
         options: {
@@ -266,18 +288,29 @@ $('#auth-form').addEventListener('submit', async (e) => {
             nome: $('#auth-nome').value.trim(),
             cognome: $('#auth-cognome').value.trim(),
             telefono: $('#auth-telefono').value.trim(),
+            privacy_accettata: 'true',
+            privacy_versione: PRIVACY_VERSIONE,
           },
         },
       });
       if (error) throw error;
-      toast('Account creato! Controlla la mail se richiesta la conferma.', 'success');
+      // Email già registrata (anche in un'altra palestra): Supabase non dà errore ma identities è vuoto.
+      if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setAuthMode('signin');
+        showAuthError('Esiste già un account con questa email: accedi con la tua password (o usa "Password dimenticata?").');
+        return;
+      }
+      if (!data || !data.session) {
+        setAuthMode('signin');
+        toast('Account creato! Conferma la tua email e poi accedi.', 'success', 5000);
+      }
+      // con sessione attiva: onAuthStateChange porta direttamente nell'app
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw error;
     }
   } catch (err) {
-    errEl.textContent = translateAuthError(err);
-    errEl.hidden = false;
+    showAuthError(translateAuthError(err));
   } finally {
     $('#auth-submit').disabled = false;
   }
@@ -287,14 +320,116 @@ function translateAuthError(err) {
   const msg = (err && err.message) || 'Errore imprevisto.';
   if (/invalid login credentials/i.test(msg)) return 'Email o password non corrette.';
   if (/already registered/i.test(msg)) return 'Esiste già un account con questa email.';
+  if (/rate limit|too many|security purposes/i.test(msg)) return 'Troppi tentativi ravvicinati: attendi qualche minuto e riprova.';
   if (/password/i.test(msg) && /6/.test(msg)) return 'La password deve avere almeno 6 caratteri.';
+  if (/valid email|invalid.*email|email.*invalid/i.test(msg)) return 'Inserisci un indirizzo email valido.';
+  if (/failed to fetch|network/i.test(msg)) return 'Connessione assente: riprova tra poco.';
   return msg;
 }
 
-sb.auth.onAuthStateChange((_event, session) => {
+/* ---- Informativa privacy ---- */
+function openPrivacy() { $('#privacy-overlay').hidden = false; }
+function closePrivacy() { $('#privacy-overlay').hidden = true; }
+$('#privacy-open').addEventListener('click', (e) => { e.preventDefault(); openPrivacy(); });
+$('#complete-privacy-open').addEventListener('click', (e) => { e.preventDefault(); openPrivacy(); });
+$('#privacy-close').addEventListener('click', closePrivacy);
+$('#privacy-ok').addEventListener('click', closePrivacy);
+$('#privacy-overlay').addEventListener('click', (e) => { if (e.target.id === 'privacy-overlay') closePrivacy(); });
+
+/* ---- Password dimenticata ---- */
+$('#auth-forgot').addEventListener('click', async () => {
+  const email = $('#auth-email').value.trim();
+  if (!email) return showAuthError('Scrivi qui sopra la tua email, poi tocca "Password dimenticata?".');
+  $('#auth-forgot').disabled = true;
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    if (error) throw error;
+    $('#auth-error').hidden = true;
+    toast('Se l\'email è registrata, ti abbiamo inviato il link per scegliere una nuova password.', 'success', 6000);
+  } catch (err) {
+    showAuthError(translateAuthError(err));
+  } finally {
+    $('#auth-forgot').disabled = false;
+  }
+});
+
+$('#recovery-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pw = $('#recovery-password').value;
+  const errEl = $('#recovery-error');
+  errEl.hidden = true;
+  if (pw.length < 6) { errEl.textContent = 'La password deve avere almeno 6 caratteri.'; errEl.hidden = false; return; }
+  $('#recovery-submit').disabled = true;
+  try {
+    const { data, error } = await sb.auth.updateUser({ password: pw });
+    if (error) throw error;
+    state.recovery = false;
+    $('#recovery-overlay').hidden = true;
+    $('#recovery-form').reset();
+    history.replaceState(null, '', location.pathname);
+    toast('Password aggiornata ✔', 'success', 2500);
+    if (data && data.user) enterApp(data.user);
+  } catch (err) {
+    errEl.textContent = translateAuthError(err);
+    errEl.hidden = false;
+  } finally {
+    $('#recovery-submit').disabled = false;
+  }
+});
+
+/* ---- Completa profilo (account esistente che entra per la prima volta in Fitness Time) ---- */
+function openCompleteProfile(user) {
+  const meta = (user && user.user_metadata) || {};
+  $('#complete-form').reset();
+  $('#complete-nome').value = meta.nome || '';
+  $('#complete-cognome').value = meta.cognome || '';
+  $('#complete-telefono').value = meta.telefono || '';
+  $('#complete-error').hidden = true;
+  $('#complete-overlay').hidden = false;
+}
+
+$('#complete-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = $('#complete-error');
+  errEl.hidden = true;
+  const nome = $('#complete-nome').value.trim();
+  const cognome = $('#complete-cognome').value.trim();
+  const telefono = $('#complete-telefono').value.trim();
+  if (!nome || !cognome) { errEl.textContent = 'Inserisci nome e cognome.'; errEl.hidden = false; return; }
+  if (telefono.replace(/\D/g, '').length < 6) { errEl.textContent = 'Inserisci un numero di telefono valido.'; errEl.hidden = false; return; }
+  if (!$('#complete-privacy').checked) { errEl.textContent = 'Devi accettare l\'informativa privacy.'; errEl.hidden = false; return; }
+  $('#complete-submit').disabled = true;
+  try {
+    const { error } = await sb.rpc('fitnesstime_ensure_profile', {
+      p_nome: nome, p_cognome: cognome, p_telefono: telefono, p_privacy: true, p_versione: PRIVACY_VERSIONE,
+    });
+    if (error) throw error;
+    $('#complete-overlay').hidden = true;
+    if (state.user) enterApp(state.user);
+  } catch (err) {
+    errEl.textContent = translateAuthError(err);
+    errEl.hidden = false;
+  } finally {
+    $('#complete-submit').disabled = false;
+  }
+});
+
+$('#complete-cancel').addEventListener('click', async () => {
+  $('#complete-overlay').hidden = true;
+  try { await sb.auth.signOut(); } catch (e) { /* offline */ }
+  exitApp();
+});
+
+sb.auth.onAuthStateChange((event, session) => {
   if (DEMO_MODE) return; // in demo l'app non passa mai dal vero login Supabase
   // setTimeout: evita chiamate Supabase dentro la callback di auth (rischio deadlock)
   setTimeout(() => {
+    if (event === 'PASSWORD_RECOVERY') {
+      state.recovery = true;
+      $('#recovery-overlay').hidden = false;
+      return;
+    }
+    if (state.recovery) return; // finché non sceglie la nuova password non si entra
     if (session && session.user) {
       if (state.user && state.user.id === session.user.id) return; // refresh token: nessun reset della vista
       enterApp(session.user);
@@ -383,9 +518,16 @@ async function enterApp(user) {
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (error || !profile) {
-    toast('Profilo non trovato. Contatta lo staff di Fitness Time.', 'error', 5000);
+  if (error) {
+    toast('Impossibile caricare il profilo: controlla la connessione e riprova.', 'error', 5000);
     await sb.auth.signOut();
+    return;
+  }
+  if (!profile) {
+    // Account già esistente (es. creato in un'altra palestra): primo accesso a Fitness Time
+    $('#view-auth').hidden = true;
+    $('#logout-btn').hidden = false;
+    openCompleteProfile(user);
     return;
   }
 
@@ -428,6 +570,7 @@ function exitApp() {
   $('#back-btn').hidden = true;
   $('#logout-btn').hidden = true;
   document.body.classList.remove('is-athlete');
+  $('#complete-overlay').hidden = true;
   $('#auth-form').reset();
   setAuthMode('signin');
 }
@@ -504,7 +647,7 @@ async function loadAthletes() {
   const { data, error } = await sb
     .from('fitnesstime_profiles')
     .select(`
-      id, nome, cognome, telefono, categoria, note, attivo,
+      id, nome, cognome, telefono, categoria, note, attivo, created_at,
       fitnesstime_schede ( id, titolo, attiva, created_at )
     `)
     .eq('ruolo', 'athlete')
@@ -527,6 +670,11 @@ function categoriaBadgeHtml(categoria) {
   const c = CATEGORIE[categoria];
   if (!c) return '';
   return `<span class="badge-categoria cat-${categoria}">${icon(c.icon)}${escapeHtml(c.label)}</span>`;
+}
+
+function isNuovoAtleta(a) {
+  if (!a.created_at || (a.fitnesstime_schede || []).length) return false;
+  return Date.now() - new Date(a.created_at).getTime() < 7 * 24 * 3600 * 1000;
 }
 
 function renderDashboard() {
@@ -552,6 +700,7 @@ function renderDashboard() {
       <div class="athlete-info">
         <div class="athlete-name">${escapeHtml(a.nome)} ${escapeHtml(a.cognome)}</div>
         <div class="athlete-meta">
+          ${isNuovoAtleta(a) ? '<span class="badge-nuovo">Nuovo</span>' : ''}
           ${categoriaBadgeHtml(a.categoria)}
           <span class="scheda-status ${a.schedaAttiva ? 'has-scheda' : ''}">
             ${a.schedaAttiva ? `✔ ${escapeHtml(a.schedaAttiva.titolo)}` : 'Nessuna scheda'}

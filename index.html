@@ -42,7 +42,7 @@
     <div class="auth-card">
       <img src="icons/icon-512.png" alt="Fitness Time Club" class="auth-logo">
       <h1>Fitness Time Club</h1>
-      <p class="muted">Accedi con l'account che ti ha fornito il tuo coach.</p>
+      <p class="muted" id="auth-intro">Accedi per vedere la tua scheda e le tue misure.</p>
 
       <form id="auth-form" class="auth-form" autocomplete="on">
         <label class="field">
@@ -65,13 +65,18 @@
           </label>
           <label class="field">
             <span>Telefono</span>
-            <input type="tel" id="auth-telefono" name="telefono" autocomplete="tel">
+            <input type="tel" id="auth-telefono" name="telefono" autocomplete="tel" inputmode="tel" placeholder="333 1234567">
+          </label>
+          <label class="field-check">
+            <input type="checkbox" id="auth-privacy">
+            <span>Ho letto e accetto l'<a href="#" id="privacy-open" class="link-inline">informativa privacy</a></span>
           </label>
         </div>
 
         <p id="auth-error" class="form-error" role="alert" hidden></p>
 
         <button type="submit" id="auth-submit" class="btn btn-primary btn-block">Accedi</button>
+        <button type="button" id="auth-forgot" class="btn btn-ghost btn-block">Password dimenticata?</button>
         <button type="button" id="auth-toggle-mode" class="btn btn-ghost btn-block">Non hai un account? Registrati</button>
       </form>
     </div>
@@ -359,6 +364,63 @@
       </label>
       <p id="nsc-error" class="form-error" role="alert" hidden></p>
       <button type="submit" id="nsc-submit" class="btn btn-primary btn-block">Crea scheda</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: INFORMATIVA PRIVACY ================= -->
+<div id="privacy-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Informativa privacy">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">Informativa privacy</h3>
+      <button type="button" class="icon-btn" id="privacy-close" aria-label="Chiudi"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="privacy-text">
+      <p><strong>Titolare del trattamento:</strong> Fitness Time Club, Adelfia (BA).</p>
+      <p><strong>Dati trattati:</strong> email, nome, cognome, telefono e, durante l'uso dell'app, scheda di allenamento e misure corporee (BIA, circonferenze) che tu o il tuo coach inserite.</p>
+      <p><strong>Finalità:</strong> creare il tuo account, permetterti di consultare la scheda e le misure, consentire allo staff di gestire il tuo percorso di allenamento e contattarti per questioni legate al servizio.</p>
+      <p><strong>Conservazione e accesso:</strong> i dati sono conservati su server protetti e sono visibili solo a te e allo staff autorizzato della palestra. Non vengono ceduti a terzi per scopi commerciali.</p>
+      <p><strong>I tuoi diritti:</strong> puoi chiedere in qualsiasi momento accesso, rettifica o cancellazione dei dati rivolgendoti allo staff della palestra.</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-block" id="privacy-ok">Ho capito</button>
+  </div>
+</div>
+
+<!-- ================= MODAL: NUOVA PASSWORD (dopo link "password dimenticata") ================= -->
+<div id="recovery-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Imposta nuova password">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">Nuova password</h3>
+    </div>
+    <form id="recovery-form" class="auth-form">
+      <label class="field">
+        <span>Nuova password (almeno 6 caratteri)</span>
+        <input type="password" id="recovery-password" required minlength="6" autocomplete="new-password" placeholder="••••••••">
+      </label>
+      <p id="recovery-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="recovery-submit" class="btn btn-primary btn-block">Salva password</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= MODAL: COMPLETA PROFILO (account esistente, primo accesso a Fitness Time) ================= -->
+<div id="complete-overlay" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-label="Completa il profilo">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 class="card-title">Completa il profilo</h3>
+    </div>
+    <p class="muted">Prima volta su Fitness Time: servono ancora pochi dati.</p>
+    <form id="complete-form" class="auth-form">
+      <label class="field"><span>Nome</span><input type="text" id="complete-nome" required autocomplete="given-name"></label>
+      <label class="field"><span>Cognome</span><input type="text" id="complete-cognome" required autocomplete="family-name"></label>
+      <label class="field"><span>Telefono</span><input type="tel" id="complete-telefono" required autocomplete="tel" inputmode="tel"></label>
+      <label class="field-check">
+        <input type="checkbox" id="complete-privacy">
+        <span>Ho letto e accetto l'<a href="#" id="complete-privacy-open" class="link-inline">informativa privacy</a></span>
+      </label>
+      <p id="complete-error" class="form-error" role="alert" hidden></p>
+      <button type="submit" id="complete-submit" class="btn btn-primary btn-block">Continua</button>
+      <button type="button" id="complete-cancel" class="btn btn-ghost btn-block">Esci</button>
     </form>
   </div>
 </div>

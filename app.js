@@ -19,7 +19,7 @@ const APP_TAG = 'fitnesstime'; // deve combaciare con il trigger fitnesstime_han
  * legate a DEMO_PROFILE_ID (vedi fitnesstime_seed_data.sql) — nessun altro
  * dato reale degli atleti e' esposto. Riportare DEMO_MODE a false (e far
  * tornare gli atleti al login vero) quando la demo e' terminata. */
-const DEMO_MODE = true;
+const DEMO_MODE = false;
 const DEMO_PROFILE = {
   id: '11111111-1111-4111-8111-111111111111',
   ruolo: 'trainer',
@@ -64,7 +64,9 @@ const state = {
   activeTimer: null,
 
   // --- Dashboard Istruttore ---
-  mode: 'dashboard',       // 'dashboard' | 'athlete-detail' | 'simulate'
+  mode: 'dashboard',       // 'dashboard' | 'athlete-detail' | 'simulate' | 'athlete-home'
+  me: null,                // profilo di chi e' loggato (staff o atleta)
+  home: { schede: [], bia: [], circ: [], tab: 'scheda' }, // dati vista atleta (sola lettura)
   coach: null,             // profilo trainer/coach (DEMO_PROFILE in demo)
   athletes: [],            // elenco atleti (fitnesstime_profiles ruolo='athlete') con conteggio schede
   athleteFilter: 'tutti',  // 'tutti' | 'sala_pesi' | 'personal' | 'nuoto'
@@ -207,7 +209,8 @@ async function flushPendingLogs() {
  * direttamente su fitnesstime_workout_logs con profile_id esplicito,
  * permesso dalla policy RLS anon scoped ai soli profili ruolo='athlete'. */
 async function submitWorkoutLog(args) {
-  if (DEMO_MODE) {
+  // Simulazione del coach (utente staff loggato): insert diretto per l'atleta simulato
+  if (DEMO_MODE || state.mode === 'simulate') {
     return sb.from('fitnesstime_workout_logs').insert({
       profile_id: state.profile.id,
       sessione_id: args.p_sessione_id,
@@ -290,11 +293,20 @@ function translateAuthError(err) {
 
 sb.auth.onAuthStateChange((_event, session) => {
   if (DEMO_MODE) return; // in demo l'app non passa mai dal vero login Supabase
-  if (session && session.user) {
-    enterApp(session.user);
-  } else {
-    exitApp();
-  }
+  // setTimeout: evita chiamate Supabase dentro la callback di auth (rischio deadlock)
+  setTimeout(() => {
+    if (session && session.user) {
+      if (state.user && state.user.id === session.user.id) return; // refresh token: nessun reset della vista
+      enterApp(session.user);
+    } else {
+      exitApp();
+    }
+  }, 0);
+});
+
+$('#logout-btn').addEventListener('click', async () => {
+  try { await sb.auth.signOut(); } catch (e) { /* offline: si esce comunque */ }
+  exitApp();
 });
 
 /* ---------------------------------------------------------------------
@@ -317,10 +329,12 @@ function setMacroView(mode) {
   state.mode = mode;
   $('#view-dashboard').hidden = mode !== 'dashboard';
   $('#view-athlete-detail').hidden = mode !== 'athlete-detail';
+  $('#view-athlete-home').hidden = mode !== 'athlete-home';
   $('#view-app').hidden = mode !== 'simulate';
   $('#tabbar').hidden = mode !== 'simulate';
   $('#simulate-banner').hidden = mode !== 'simulate';
-  $('#back-btn').hidden = mode === 'dashboard';
+  $('#back-btn').hidden = mode === 'dashboard' || mode === 'athlete-home';
+  document.body.classList.toggle('is-athlete', mode === 'athlete-home');
 }
 
 $('#back-btn').addEventListener('click', () => {
@@ -375,28 +389,45 @@ async function enterApp(user) {
     return;
   }
 
-  state.profile = profile;
+  state.me = profile;
   $('#view-auth').hidden = true;
-  $('#view-app').hidden = false;
-  $('#tabbar').hidden = false;
-
+  $('#logout-btn').hidden = false;
   state.loadedViews.clear();
-  await loadCatalogoEsercizi();
-  await loadSchede();
-  renderView('oggi');
-  renderInfoView();
-  flushPendingLogs();
+
+  if (profile.ruolo === 'admin' || profile.ruolo === 'trainer') {
+    // ---- STAFF (Andrea): dashboard completa, creazione, PDF, invio, pubblicazione ----
+    state.coach = profile;
+    state.profile = null;
+    await loadCatalogoEsercizi();
+    await goToDashboard();
+  } else {
+    // ---- UTENTE: sola lettura di scheda e BIA pubblicate, nessun download ----
+    state.coach = null;
+    state.profile = profile;
+    await enterAthleteHome();
+  }
 }
 
 function exitApp() {
   state.user = null;
+  state.me = null;
+  state.coach = null;
   state.profile = null;
   state.schede = [];
   state.activeScheda = null;
+  state.selectedAthlete = null;
+  state.home = { schede: [], bia: [], circ: [], tab: 'scheda' };
   state.loadedViews.clear();
   $('#view-auth').hidden = false;
+  $('#view-dashboard').hidden = true;
+  $('#view-athlete-detail').hidden = true;
+  $('#view-athlete-home').hidden = true;
   $('#view-app').hidden = true;
   $('#tabbar').hidden = true;
+  $('#simulate-banner').hidden = true;
+  $('#back-btn').hidden = true;
+  $('#logout-btn').hidden = true;
+  document.body.classList.remove('is-athlete');
   $('#auth-form').reset();
   setAuthMode('signin');
 }
@@ -607,13 +638,16 @@ $('#new-athlete-form').addEventListener('submit', async (e) => {
     // fitnesstime_profiles.email e' NOT NULL, ma il form "+ Nuovo Atleta" (come da
     // specifica) non la richiede: generiamo un placeholder finche' l'atleta non
     // completa una vera registrazione (user_id resta null in quel caso).
+    // Se Andrea inserisce l'email dell'atleta, quando l'atleta si registra con la stessa
+    // email il suo account si collega automaticamente a questo profilo (e alla sua scheda).
     const emailPlaceholder = `${slugify(nome)}.${slugify(cognome) || 'atleta'}.${Date.now().toString(36)}@fitnesstime.local`;
+    const emailAtleta = $('#nat-email').value.trim().toLowerCase();
 
     const { error } = await sb.from('fitnesstime_profiles').insert({
       ruolo: 'athlete',
       nome,
       cognome: cognome || '',
-      email: emailPlaceholder,
+      email: emailAtleta || emailPlaceholder,
       telefono: telefono || null,
       categoria,
       note: note || null,
@@ -645,7 +679,7 @@ async function goToAthleteDetail(athleteId) {
     .select(`
       id, nome, cognome, telefono, categoria, note, attivo,
       fitnesstime_schede (
-        id, titolo, obiettivo, data_inizio, data_scadenza, settimane_durata, note_coach, attiva,
+        id, titolo, obiettivo, data_inizio, data_scadenza, settimane_durata, note_coach, attiva, pubblicata,
         fitnesstime_sessioni (
           id, nome, ordine, note, addome, cardio,
           fitnesstime_esercizi (
@@ -656,7 +690,7 @@ async function goToAthleteDetail(athleteId) {
         )
       ),
       fitnesstime_misure_bia (
-        id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l
+        id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l, pubblicata, inserita_da
       ),
       fitnesstime_misure_antropometriche (${ANTROP_COLS})
     `)
@@ -721,7 +755,7 @@ function renderAthleteDetail() {
       </button>
     </div>
 
-    ${biaSectionHtml(a)}
+    ${biaSectionHtml(a.fitnesstime_misure_bia, 'staff')}
 
     ${antropSectionHtml(a)}
 
@@ -732,6 +766,7 @@ function renderAthleteDetail() {
         <div class="exercise-head scheda-toggle" data-toggle-scheda="${scheda.id}" role="button" tabindex="0" aria-expanded="${schedeCollassate.has(scheda.id) ? 'false' : 'true'}" title="Riduci / espandi scheda">
           <span class="exercise-name"><span class="scheda-chevron">${icon('chevron')}</span>${escapeHtml(scheda.titolo)}</span>
           <div class="scheda-head-actions">
+            ${scheda.pubblicata ? `<span class="chip chip-live" title="Visibile all'atleta nell'app">${icon('eye')}Online</span>` : ''}
             <span class="chip ${scheda.attiva ? 'chip-red' : ''}">${scheda.attiva ? 'Attiva' : 'Conclusa'}</span>
             <button type="button" class="icon-btn-sm icon-btn-danger" data-delete-scheda="${scheda.id}" aria-label="Elimina scheda" title="Elimina scheda">${icon('trash')}</button>
           </div>
@@ -741,6 +776,7 @@ function renderAthleteDetail() {
         <div class="scheda-actions">
           <button type="button" class="btn btn-secondary btn-sm" data-pdf-scheda="${scheda.id}">${icon('download')} PDF</button>
           <button type="button" class="btn btn-primary btn-sm" data-share-scheda="${scheda.id}">${icon('share')} Invia</button>
+          <button type="button" class="btn ${scheda.pubblicata ? 'btn-secondary' : 'btn-publish'} btn-sm" data-publish-scheda="${scheda.id}">${icon('eye')} ${scheda.pubblicata ? 'Ritira dall\'app' : 'Pubblica sull\'app'}</button>
         </div>
         ${!scheda.attiva ? `<button type="button" class="btn btn-secondary btn-sm" data-activate-scheda="${scheda.id}" style="margin-bottom:10px;">${icon('check')} Rendi attiva</button>` : ''}
         ${(scheda.fitnesstime_sessioni || []).map((s) => `
@@ -847,6 +883,15 @@ function renderAthleteDetail() {
   });
 
   const schedaById = (id) => (a.fitnesstime_schede || []).find((x) => x.id === id);
+  $$('[data-publish-scheda]', el).forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      togglePubblicaScheda(btn.dataset.publishScheda, btn);
+    });
+  });
+  $$('[data-bia-toggle]', el).forEach((btn) => {
+    btn.addEventListener('click', () => toggleBiaPubblica(btn.dataset.biaToggle, btn));
+  });
   $$('[data-pdf-scheda]', el).forEach((btn) => {
     btn.addEventListener('click', () => {
       const sc = schedaById(btn.dataset.pdfScheda);
@@ -911,7 +956,7 @@ function biaMetricHtml(label, value, unit, deltaHtml) {
   `;
 }
 
-const BIA_COLS = "id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l";
+const BIA_COLS = "id, data_rilevazione, peso_kg, massa_grassa_perc, massa_magra_kg, acqua_perc, grasso_viscerale, note, altezza_cm, rz_ohm, xc_ohm, pha_gradi, bmr_kcal, bcmi, bcm_kg, massa_grassa_kg, smm_kg, asmm_kg, tbw_l, ecw_l, icw_l, pubblicata, inserita_da";
 
 function biaR(x) { return Math.round(x * 10) / 10; }
 function biaPct(part, whole) {
@@ -963,8 +1008,10 @@ function biaDettagliHtml(m) {
   `;
 }
 
-function biaSectionHtml(athlete) {
-  const misure = athlete.fitnesstime_misure_bia || [];
+/* mode: 'staff' (Andrea: pubblica/ritira ogni rilevazione) | 'athlete' (utente: vede il pubblicato + inserisce i propri valori) */
+function biaSectionHtml(misureIn, mode) {
+  const isStaff = mode === 'staff';
+  const misure = misureIn || [];
   const ultima = misure[0] || null;
   const prec = misure[1] || null;
   const pv = (k) => (prec ? prec[k] : null);
@@ -980,19 +1027,29 @@ function biaSectionHtml(athlete) {
       ${biaMetricHtml('Angolo di fase', ultima.pha_gradi, '°', biaDeltaBadge(ultima.pha_gradi, pv('pha_gradi'), '°', true))}
     </div>
     ${biaDettagliHtml(ultima)}
-  ` : '<p class="muted" style="margin-bottom:10px;">Nessuna rilevazione BIA registrata.</p>';
+  ` : `<p class="muted" style="margin-bottom:10px;">${isStaff ? 'Nessuna rilevazione BIA registrata.' : 'Nessuna rilevazione BIA ancora: il tuo coach pubblicherà qui i valori, e puoi inserire anche i tuoi.'}</p>`;
+
+  const originTag = (m) => (m.inserita_da === 'atleta'
+    ? `<span class="bia-origin">${isStaff ? 'inserita dall\'atleta' : 'inserita da te'}</span>`
+    : '');
+  const toggleCell = (m) => {
+    if (!isStaff) return '';
+    if (m.inserita_da === 'atleta') return '<td></td>';
+    return `<td><button type="button" class="bia-toggle ${m.pubblicata ? 'is-on' : ''}" data-bia-toggle="${m.id}" title="${m.pubblicata ? 'Visibile all\'atleta: clicca per nascondere' : 'Nascosta: clicca per mostrare all\'atleta'}">${icon('eye')}${m.pubblicata ? 'Online' : 'Nascosta'}</button></td>`;
+  };
 
   const storico = misure.length ? `
     <table class="bia-history-table">
-      <thead><tr><th>Data</th><th>Peso</th><th>% Grasso</th><th>Magra</th><th>% Acqua</th></tr></thead>
+      <thead><tr><th>Data</th><th>Peso</th><th>% Grasso</th><th>Magra</th><th>% Acqua</th>${isStaff ? '<th></th>' : ''}</tr></thead>
       <tbody>
         ${misure.map((m) => `
           <tr>
-            <td>${fmtDate(m.data_rilevazione)}</td>
+            <td>${fmtDate(m.data_rilevazione)}${originTag(m)}</td>
             <td>${m.peso_kg != null ? escapeHtml(String(m.peso_kg)) : '–'} kg</td>
             <td>${m.massa_grassa_perc != null ? escapeHtml(String(m.massa_grassa_perc)) : '–'}%</td>
             <td>${m.massa_magra_kg != null ? escapeHtml(String(m.massa_magra_kg)) : '–'} kg</td>
             <td>${m.acqua_perc != null ? escapeHtml(String(m.acqua_perc)) : '–'}%</td>
+            ${toggleCell(m)}
           </tr>
         `).join('')}
       </tbody>
@@ -1003,7 +1060,7 @@ function biaSectionHtml(athlete) {
     <div class="card" data-bia-section>
       <div class="exercise-head">
         <h3 class="card-title card-title-icon" style="margin-bottom:0;">${icon('gauge')}<span>Composizione Corporea <span class="bia-sub">(BIA)</span></span></h3>
-        <button type="button" class="btn btn-secondary btn-sm" id="new-bia-btn">+ Nuova BIA</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="new-bia-btn">${isStaff ? '+ Nuova BIA' : '+ Inserisci valori'}</button>
       </div>
       ${summary}
       ${storico}
@@ -1020,6 +1077,9 @@ function openBiaModal(athleteId) {
   $('#bia-data').value = new Date().toISOString().slice(0, 10);
   $('#bia-calcoli').hidden = true;
   const more = $('#bia-form .bia-more'); if (more) more.open = false;
+  // "Mostra all'atleta" ha senso solo per Andrea; l'utente inserisce valori suoi
+  $('#bia-pubblica-field').hidden = !state.coach;
+  $('#bia-pubblica').checked = true;
   $('#bia-overlay').hidden = false;
   $('#bia-overlay').dataset.athleteId = athleteId;
   $('#bia-peso').focus();
@@ -1090,6 +1150,7 @@ $('#bia-form').addEventListener('submit', async (e) => {
   }
 
   const c = biaCalc(m);
+  const isStaff = !!state.coach;
   const payload = {
     atleta_id: athleteId,
     ...m,
@@ -1097,6 +1158,8 @@ $('#bia-form').addEventListener('submit', async (e) => {
     massa_grassa_perc: c.fm_p,
     acqua_perc: c.tbw_p,
     note: note || null,
+    inserita_da: isStaff ? 'staff' : 'atleta',
+    pubblicata: isStaff ? $('#bia-pubblica').checked : true,
   };
 
   const submitBtn = $('#bia-submit');
@@ -1114,7 +1177,10 @@ $('#bia-form').addEventListener('submit', async (e) => {
     closeBiaModal();
     toast('Rilevazione BIA salvata ✔', 'success', 1800);
 
-    if (state.selectedAthlete && state.selectedAthlete.id === athleteId) {
+    if (state.mode === 'athlete-home') {
+      await loadAthleteHome();
+      renderAthleteHome();
+    } else if (state.selectedAthlete && state.selectedAthlete.id === athleteId) {
       const altre = (state.selectedAthlete.fitnesstime_misure_bia || [])
         .filter((x) => x.data_rilevazione !== data.data_rilevazione);
       state.selectedAthlete.fitnesstime_misure_bia = [...altre, data]
@@ -1122,7 +1188,10 @@ $('#bia-form').addEventListener('submit', async (e) => {
       renderAthleteDetail();
     }
   } catch (err) {
-    errEl.textContent = 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
+    const rls = err && /row-level security/i.test(err.message || '');
+    errEl.textContent = rls
+      ? 'In questa data esiste già una rilevazione inserita dal coach: scegli un altro giorno.'
+      : 'Errore nel salvataggio: ' + ((err && err.message) || 'riprova.');
     errEl.hidden = false;
   } finally {
     submitBtn.disabled = false;
@@ -1235,6 +1304,224 @@ $('#antrop-form').addEventListener('submit', async (e) => {
     errEl.hidden = false;
   } finally {
     btn.disabled = false;
+  }
+});
+
+/* ---------------------------------------------------------------------
+ * CIRCONFERENZE — le inserisce solo Andrea (staff), l'utente le vede in sola lettura
+ * ------------------------------------------------------------------- */
+const CIRC_FIELDS = [
+  ['spalle_cm', 'Spalle'], ['petto_cm', 'Petto'], ['bicipiti_cm', 'Bicipite'],
+  ['vita_cm', 'Vita'], ['interno_coscia_cm', 'Coscia'], ['ginocchio_cm', 'Ginocchio'],
+  ['polpaccio_cm', 'Polpaccio'],
+];
+const CIRC_COLS = 'id, data_rilevazione, note, ' + CIRC_FIELDS.map((f) => f[0]).join(', ');
+
+function circDeltaHtml(curr, prev) {
+  if (curr == null || prev == null) return '';
+  const d = Math.round((Number(curr) - Number(prev)) * 10) / 10;
+  if (d === 0) return '<span class="bia-delta bia-delta-flat">= invariato</span>';
+  return `<span class="bia-delta bia-delta-flat">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}cm</span>`;
+}
+
+function circSectionHtml(misureIn, mode) {
+  const isStaff = mode === 'staff';
+  const misure = misureIn || [];
+  const ultima = misure[0] || null;
+  const prec = misure[1] || null;
+
+  const summary = ultima ? `
+    <p class="muted" style="margin-bottom:10px;">Ultima misurazione: ${fmtDate(ultima.data_rilevazione)}</p>
+    <div class="bia-metric-grid">
+      ${CIRC_FIELDS.filter((f) => ultima[f[0]] != null)
+        .map((f) => biaMetricHtml(f[1], ultima[f[0]], 'cm', circDeltaHtml(ultima[f[0]], prec ? prec[f[0]] : null))).join('')}
+    </div>
+    ${ultima.note ? `<p class="muted" style="margin-top:8px;">${icon('message')} ${escapeHtml(ultima.note)}</p>` : ''}
+  ` : `<p class="muted">${isStaff ? 'Nessuna circonferenza registrata.' : 'Il tuo coach inserirà qui le tue circonferenze.'}</p>`;
+
+  const storico = misure.length > 1 ? `
+    <details class="bia-more">
+      <summary>Storico misurazioni (${misure.length})</summary>
+      ${misure.map((m) => `
+        <p class="circ-history-row"><strong>${fmtDate(m.data_rilevazione)}</strong>
+        ${CIRC_FIELDS.filter((f) => m[f[0]] != null).map((f) => `${f[1]} ${escapeHtml(String(m[f[0]]))}`).join(' · ')}</p>
+      `).join('')}
+    </details>
+  ` : '';
+
+  return `
+    <div class="card" data-circ-section>
+      <div class="exercise-head">
+        <h3 class="card-title card-title-icon" style="margin-bottom:0;">${icon('clipboard')}<span>Circonferenze</span></h3>
+      </div>
+      ${summary}
+      ${storico}
+    </div>
+  `;
+}
+
+/* ---------------------------------------------------------------------
+ * PUBBLICAZIONE (Andrea decide cosa compare nell'app dell'utente)
+ * ------------------------------------------------------------------- */
+async function togglePubblicaScheda(schedaId, btn) {
+  const a = state.selectedAthlete;
+  const sc = a && (a.fitnesstime_schede || []).find((x) => x.id === schedaId);
+  if (!sc) return;
+  const next = !sc.pubblicata;
+  btn.disabled = true;
+  try {
+    const { data, error } = await sb.from('fitnesstime_schede')
+      .update({ pubblicata: next }).eq('id', schedaId).select('id');
+    if (error) throw error;
+    if (!data || !data.length) throw new Error('permesso negato');
+    sc.pubblicata = next;
+    toast(next ? 'Scheda pubblicata: l\'atleta ora la vede nell\'app ✔' : 'Scheda ritirata: l\'atleta non la vede più', 'success', 2600);
+    renderAthleteDetail();
+  } catch (err) {
+    btn.disabled = false;
+    toast('Errore: ' + ((err && err.message) || 'riprova.'), 'error', 4500);
+  }
+}
+
+async function toggleBiaPubblica(biaId, btn) {
+  const a = state.selectedAthlete;
+  const m = a && (a.fitnesstime_misure_bia || []).find((x) => x.id === biaId);
+  if (!m) return;
+  const next = !m.pubblicata;
+  btn.disabled = true;
+  try {
+    const { data, error } = await sb.from('fitnesstime_misure_bia')
+      .update({ pubblicata: next }).eq('id', biaId).select('id');
+    if (error) throw error;
+    if (!data || !data.length) throw new Error('permesso negato');
+    m.pubblicata = next;
+    toast(next ? 'BIA visibile all\'atleta ✔' : 'BIA nascosta all\'atleta', 'success', 2200);
+    renderAthleteDetail();
+  } catch (err) {
+    btn.disabled = false;
+    toast('Errore: ' + ((err && err.message) || 'riprova.'), 'error', 4500);
+  }
+}
+
+/* =======================================================================
+ * VISTA UTENTE (atleta) — SOLA LETTURA
+ * Scheda e BIA pubblicate da Andrea, mostrate nell'app: nessun PDF, nessun
+ * pulsante di download/condivisione, nessuna registrazione di carichi.
+ * L'utente puo' solo inserire i propri valori BIA.
+ * ===================================================================== */
+async function loadAthleteHome() {
+  const me = state.profile;
+  const [sc, bia, circ] = await Promise.all([
+    sb.from('fitnesstime_schede')
+      .select(`
+        id, titolo, obiettivo, note_coach, attiva, created_at,
+        fitnesstime_sessioni (
+          id, nome, ordine, addome, cardio,
+          fitnesstime_esercizi (
+            id, nome, ordine, serie, ripetizioni, rir,
+            tempo_recupero_secondi, recupero_max_secondi, tecnica, rir_testo, note_tecniche
+          )
+        )
+      `)
+      .eq('profile_id', me.id)
+      .eq('pubblicata', true)
+      .order('attiva', { ascending: false })
+      .order('created_at', { ascending: false }),
+    sb.from('fitnesstime_misure_bia').select(BIA_COLS).eq('atleta_id', me.id)
+      .order('data_rilevazione', { ascending: false }),
+    sb.from('fitnesstime_misure_antropometriche').select(CIRC_COLS).eq('atleta_id', me.id)
+      .order('data_rilevazione', { ascending: false }),
+  ]);
+
+  if (sc.error || bia.error || circ.error) {
+    toast('Errore nel caricamento dei tuoi dati. Riprova tra poco.', 'error', 4500);
+  }
+
+  state.home.schede = (sc.data || []).map((s) => ({
+    ...s,
+    fitnesstime_sessioni: (s.fitnesstime_sessioni || [])
+      .sort((a, b) => a.ordine - b.ordine)
+      .map((x) => ({ ...x, fitnesstime_esercizi: (x.fitnesstime_esercizi || []).sort((a, b) => a.ordine - b.ordine) })),
+  }));
+  state.home.bia = bia.data || [];
+  state.home.circ = circ.data || [];
+}
+
+async function enterAthleteHome() {
+  setMacroView('athlete-home');
+  $('#athlete-home-content').innerHTML = '<p class="muted">Caricamento…</p>';
+  await loadAthleteHome();
+  renderAthleteHome();
+}
+
+function homeSchedaHtml() {
+  const schede = state.home.schede;
+  if (!schede.length) {
+    return emptyState('clipboard', 'Il tuo coach non ha ancora pubblicato la tua scheda. Appena sarà online la vedrai qui.');
+  }
+  return schede.map((sc) => `
+    <div class="card session-card">
+      <div class="exercise-head">
+        <span class="exercise-name">${escapeHtml(sc.titolo)}</span>
+        <span class="chip ${sc.attiva ? 'chip-red' : ''}">${sc.attiva ? 'Attiva' : 'Conclusa'}</span>
+      </div>
+      ${sc.obiettivo ? `<p class="muted">${escapeHtml(sc.obiettivo)}</p>` : ''}
+      ${sc.note_coach ? `<p class="muted">${icon('message')} ${escapeHtml(sc.note_coach)}</p>` : ''}
+      ${(sc.fitnesstime_sessioni || []).map((s) => `
+        <div class="exercise-item">
+          <div class="exercise-head"><span class="exercise-name">${escapeHtml(s.nome)}</span></div>
+          ${(s.fitnesstime_esercizi || []).length
+            ? s.fitnesstime_esercizi.map((ex) => `
+              <div class="exercise-row-line">
+                <div class="exercise-row-info">
+                  <span class="exercise-row-name">${escapeHtml(ex.nome)}</span>
+                  <span class="exercise-row-meta">${ex.serie}×${escapeHtml(ex.ripetizioni)} ${icon('clock')}${escapeHtml(recuperoLabel(ex))}${rirLabel(ex) !== '—' ? ' · RIR ' + escapeHtml(rirLabel(ex)) : ''}</span>
+                  ${ex.tecnica ? `<span class="exercise-row-tecnica">${escapeHtml(ex.tecnica)}</span>` : ''}
+                  ${ex.note_tecniche ? `<span class="exercise-row-note">${icon('bulb')}${escapeHtml(ex.note_tecniche)}</span>` : ''}
+                </div>
+              </div>
+            `).join('')
+            : '<p class="muted" style="font-size:13px;">Nessun esercizio in questo giorno.</p>'}
+          ${s.addome ? `<p class="session-extra"><strong>ADDOME</strong>${escapeHtml(s.addome)}</p>` : ''}
+          ${s.cardio ? `<p class="session-extra"><strong>CARDIO</strong>${escapeHtml(s.cardio)}</p>` : ''}
+        </div>
+      `).join('') || '<p class="muted">Nessun giorno configurato.</p>'}
+    </div>
+  `).join('');
+}
+
+function renderAthleteHome() {
+  const el = $('#athlete-home-content');
+  const h = state.home;
+  const me = state.profile;
+  el.innerHTML = `
+    <h2 class="view-title">Ciao ${escapeHtml(me.nome || '')}</h2>
+    <div class="aex-mode-toggle home-tabs">
+      <button type="button" class="chip-toggle ${h.tab === 'scheda' ? 'is-active' : ''}" data-home-tab="scheda">${icon('clipboard')} Scheda</button>
+      <button type="button" class="chip-toggle ${h.tab === 'bia' ? 'is-active' : ''}" data-home-tab="bia">${icon('gauge')} BIA e misure</button>
+    </div>
+    <div class="stack">
+      ${h.tab === 'scheda'
+        ? homeSchedaHtml()
+        : biaSectionHtml(h.bia, 'athlete') + circSectionHtml(h.circ, 'athlete')}
+    </div>
+  `;
+  $$('[data-home-tab]', el).forEach((b) => {
+    b.addEventListener('click', () => { h.tab = b.dataset.homeTab; renderAthleteHome(); });
+  });
+  const newBia = $('#new-bia-btn');
+  if (newBia) newBia.addEventListener('click', () => openBiaModal(me.id));
+}
+
+// Nella vista utente: niente menu contestuale/copia/trascinamento e nessun salvataggio/stampa da tastiera.
+['contextmenu', 'dragstart', 'copy', 'cut'].forEach((evt) => {
+  document.addEventListener(evt, (e) => {
+    if (state.mode === 'athlete-home' && !(e.target.closest && e.target.closest('input, textarea'))) e.preventDefault();
+  });
+});
+document.addEventListener('keydown', (e) => {
+  if (state.mode === 'athlete-home' && (e.ctrlKey || e.metaKey) && ['s', 'p', 'u'].includes((e.key || '').toLowerCase())) {
+    e.preventDefault();
   }
 });
 

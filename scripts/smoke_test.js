@@ -96,6 +96,20 @@ check('index.html include vendor/supabase.js e app.js', () => {
   if (!/src="app\.js"/.test(html)) throw new Error('app.js non incluso');
 });
 
+check('vista utente: nessun controllo di download/PDF/invio nel rendering atleta', () => {
+  const start = appJs.indexOf('function homeSchedaHtml');
+  const end = appJs.indexOf('// Nella vista utente');
+  if (start < 0 || end < 0) throw new Error('blocco vista utente non trovato');
+  const block = appJs.slice(start, end);
+  if (/downloadSchedaPdf|shareSchedaPdf|data-pdf-scheda|data-share-scheda|data-publish-scheda|data-remove-esercizio|log_set/.test(block)) {
+    throw new Error('la vista utente contiene funzioni riservate ad Andrea');
+  }
+});
+
+check('DEMO_MODE disattivato', () => {
+  if (!/const DEMO_MODE = false;/.test(appJs)) throw new Error('DEMO_MODE deve essere false in produzione');
+});
+
 check('index.html referenzia manifest.json', () => {
   if (!/rel="manifest"\s+href="manifest\.json"/.test(html)) throw new Error('link manifest mancante');
 });
@@ -138,10 +152,16 @@ console.log('\n5. Raggiungibilita\' reale del progetto Supabase condiviso');
       if (data !== false) throw new Error(`valore inatteso: ${JSON.stringify(data)}`);
     });
 
-    await checkAsync('RLS fitnesstime_schede blocca la lettura anonima (nessun errore, righe vuote)', async () => {
+    await checkAsync('fitnesstime_schede non e\' leggibile da utenti anonimi (permesso negato o righe vuote)', async () => {
       const { data, error } = await sb.from('fitnesstime_schede').select('id').limit(1);
-      if (error) throw new Error(error.message);
-      if (Array.isArray(data) && data.length > 0) throw new Error('la RLS dovrebbe nascondere le righe agli utenti anonimi');
+      if (error) return; // permission denied = chiusura corretta
+      if (Array.isArray(data) && data.length > 0) throw new Error('un utente anonimo non deve vedere le schede');
+    });
+
+    await checkAsync('fitnesstime_misure_bia non e\' leggibile da utenti anonimi', async () => {
+      const { data, error } = await sb.from('fitnesstime_misure_bia').select('id').limit(1);
+      if (error) return;
+      if (Array.isArray(data) && data.length > 0) throw new Error('un utente anonimo non deve vedere le BIA');
     });
 
     await checkAsync('RPC fitnesstime_volume_periodo richiede un profilo (errore atteso per anon)', async () => {

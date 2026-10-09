@@ -1,6 +1,6 @@
 # Fitness Time Club — PWA & Workout Tracker — Stato progetto
 
-_Ultimo aggiornamento: 2026-10-06 (BIA completa con tutti i parametri del PDF di Andrea; scheda dettagliata stile Andrea + export PDF + invio WhatsApp via condivisione telefono). Precedente: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
+_Ultimo aggiornamento: 2026-10-08 (login reale, vista utente sola lettura, pubblicazione scheda/BIA, circonferenze). Precedente: 2026-10-06 (BIA completa con tutti i parametri del PDF di Andrea; scheda dettagliata stile Andrea + export PDF + invio WhatsApp via condivisione telefono). Precedente: 2026-09-28 (restyling grafico completo dell'app + fix header/navigazione tasto indietro + restyling UI/UX vista Schede ed Esercizi + fix bottom bar Coach/Admin + modulo BIA composizione corporea)_
 
 ## 1. Moduli completati e funzionanti
 
@@ -342,6 +342,23 @@ Andrea inserisce a mano i valori misurati dal PDF del suo strumento BIA; non si 
 - **Dati**: atleti demo non ancora eliminati (la cancellazione dal DB e' stata annullata dalla conferma
   di Supabase); aggiunta Fabiana Mece con la sua scheda (4 giorni, 28 esercizi).
 - **Da fare**: login solo per Andrea (serve la sua mail) e disattivare DEMO_MODE; poi, se serve, link personale cliente.
+
+## 3novies. LOGIN REALE + VISTA UTENTE + PUBBLICAZIONE (attivo ora — 2026-10-08)
+
+- **DEMO_MODE = false**: login Supabase reale. Account di test (password `Simone`): `admin@fitnesstime.test` (ruolo admin = Andrea)
+  e `utente@fitnesstime.test` (atleta). Tasto "Esci" nell'header.
+- **Admin/trainer**: dashboard completa invariata (creazione, PDF, Invia WhatsApp) + **"Pubblica sull'app / Ritira"** su ogni scheda
+  (`fitnesstime_schede.pubblicata`), interruttore Online/Nascosta su ogni BIA (`fitnesstime_misure_bia.pubblicata`), modal "+ Circonferenze"
+  (tabella esistente `fitnesstime_misure_antropometriche`, + colonne `fianchi_cm`, `addome_cm`, unique atleta/data). Campo email in "+ Nuovo Atleta"
+  (se l'atleta si registra con la stessa email, il trigger collega account e profilo).
+- **Utente (atleta)**: `#view-athlete-home` in sola lettura: tab "Scheda" (solo schede pubblicate, HTML nell'app, niente PDF/download/invio/log carichi)
+  e tab "BIA e misure" (BIA pubblicate da Andrea + propri valori inseribili, circonferenze solo lettura). Selezione/copia/menu contestuale/stampa disattivati
+  (deterrente: gli screenshot non sono bloccabili).
+- **RLS** (`fitnesstime_migration_pubblicazione.sql`, applicata): atleta vede solo schede/sessioni/esercizi pubblicati e le BIA pubblicate o inserite da lui;
+  scrive solo le proprie BIA (`inserita_da='atleta'`); circonferenze scrivibili solo da staff. **Rimosse tutte le policy `anon` e i grant a `anon`**
+  (verificato con test in transazione: utente 0 righe se non pubblicato, 1 se pubblicato).
+- SW `fitnesstime-v10`. Smoke test aggiornato (DEMO_MODE off, nessun controllo riservato nella vista utente).
+- **Limiti noti**: la registrazione libera dalla schermata login crea comunque un profilo atleta senza schede; "Simula Allenamento" resta solo per Andrea.
 
 ## 4. Prossimi step prioritari
 

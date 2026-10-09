@@ -32,6 +32,7 @@
     </div>
     <div class="topbar-actions">
       <span id="conn-badge" class="badge badge-offline" hidden>Offline</span>
+      <button id="logout-btn" class="btn btn-ghost btn-sm logout-btn" type="button" hidden>Esci</button>
       <button id="back-btn" class="icon-btn" type="button" hidden aria-label="Indietro"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
     </div>
   </header>
@@ -100,6 +101,13 @@
   <!-- ================= PROFILO / SCHEDA ATLETA (vista coach) ================= -->
   <main id="view-athlete-detail" hidden>
     <div id="athlete-detail-content" class="stack">
+      <p class="muted">Caricamento…</p>
+    </div>
+  </main>
+
+  <!-- ================= VISTA UTENTE (sola lettura: scheda + BIA pubblicate) ================= -->
+  <main id="view-athlete-home" hidden>
+    <div id="athlete-home-content" class="stack">
       <p class="muted">Caricamento…</p>
     </div>
   </main>
@@ -286,6 +294,10 @@
         <input type="tel" id="nat-telefono" name="nat-telefono" placeholder="Es. 333 1234567">
       </label>
       <label class="field">
+        <span>Email (per collegare l'account dell'atleta)</span>
+        <input type="email" id="nat-email" name="nat-email" placeholder="Es. marco.rossi@email.it">
+      </label>
+      <label class="field">
         <span>Categoria</span>
         <select id="nat-categoria" name="nat-categoria" class="select-input">
           <option value="sala_pesi">Sala Pesi</option>
@@ -433,6 +445,10 @@
       <label class="field">
         <span>Note</span>
         <input type="text" id="bia-note" name="bia-note" placeholder="Es. A digiuno, mattina…">
+      </label>
+      <label class="field field-check" id="bia-pubblica-field" hidden>
+        <input type="checkbox" id="bia-pubblica" checked>
+        <span>Mostra questa BIA all'atleta nell'app</span>
       </label>
       <p id="bia-calcoli" class="bia-calcoli muted" hidden></p>
       <p id="bia-error" class="form-error" role="alert" hidden></p>

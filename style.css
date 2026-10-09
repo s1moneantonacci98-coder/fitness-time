@@ -1,4 +1,4 @@
-/* =====================================================================
+/* ==============================================================
    Fitness Time Club — Design System
    Dark mode ad alto contrasto per uso in sala pesi.
    Palette calda (ember/oro) + tipografia doppia (Bebas Neue per i numeri
@@ -779,7 +779,7 @@ main#view-app {
 }
 
 /* ---------------------------- DASHBOARD ISTRUTTORE ---------------------------- */
-main#view-dashboard, main#view-athlete-detail {
+main#view-dashboard, main#view-athlete-detail, main#view-athlete-home {
   flex: 1;
   overflow-y: auto;
   padding: 16px 16px calc(24px + var(--safe-bottom));
@@ -1022,7 +1022,7 @@ main#view-dashboard, main#view-athlete-detail {
 .empty-state-icon .icon { width: 100%; height: 100%; }
 
 @media (min-width: 640px) {
-  main#view-app, main#view-dashboard, main#view-athlete-detail { padding-left: 24px; padding-right: 24px; max-width: 640px; margin: 0 auto; width: 100%; }
+  main#view-app, main#view-dashboard, main#view-athlete-detail, main#view-athlete-home { padding-left: 24px; padding-right: 24px; max-width: 640px; margin: 0 auto; width: 100%; }
   .topbar, .tabbar { padding-left: max(16px, calc(50% - 320px + 16px)); padding-right: max(16px, calc(50% - 320px + 16px)); }
 }
 
@@ -1058,6 +1058,37 @@ main#view-dashboard, main#view-athlete-detail {
 .scheda-collassabile.is-collapsed .scheda-body { display: none; }
 .scheda-collassabile.is-collapsed .scheda-toggle { margin-bottom: 0; }
 
+/* ==============================================================
+   Pubblicazione scheda/BIA + vista utente (sola lettura)
+   ===================================================================== */
+.logout-btn { font-size: 13px; padding: 6px 12px; }
+.chip-live { background: var(--aqua-soft); color: var(--aqua); border-color: var(--aqua-dark); display: inline-flex; align-items: center; gap: 4px; }
+.chip-live .icon { width: 13px; height: 13px; }
+.btn-publish { background: var(--aqua-soft); color: var(--aqua); border: 1px solid var(--aqua-dark); }
+.scheda-actions { flex-wrap: wrap; }
+.scheda-actions .btn { min-width: 96px; }
+
+.bia-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.bia-toggle .icon { width: 12px; height: 12px; }
+.bia-toggle.is-on { color: var(--aqua); border-color: var(--aqua-dark); background: var(--aqua-soft); }
+.bia-origin { display: block; font-size: 10px; color: var(--gold); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.circ-history-row { font-size: 13px; color: var(--text-muted); margin: 8px 0; line-height: 1.5; }
+.circ-history-row strong { color: var(--text); display: block; }
+
+.field-check { flex-direction: row; align-items: center; gap: 10px; text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--text); }
+.field-check input { width: 20px; height: 20px; accent-color: var(--ember); }
+.home-tabs { margin-bottom: 14px; }
+
+/* Vista utente: contenuto non selezionabile/copiabile (i campi dei form restano utilizzabili) */
+body.is-athlete #view-athlete-home { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+body.is-athlete #view-athlete-home input { -webkit-user-select: text; user-select: text; }
+@media print { body.is-athlete #app, body.is-athlete .modal-overlay { display: none !important; } body.is-athlete::before { content: "Contenuto non stampabile"; display: block; padding: 24px; } }
+
 /* Frecce spostamento esercizi */
 .exercise-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .move-btns { display: flex; flex-direction: column; gap: 4px; }
@@ -1082,3 +1113,7 @@ main#view-dashboard, main#view-athlete-detail {
 .antrop-table tbody th { text-align: left; position: sticky; left: 0; background: var(--surface, #1c1816); color: var(--text); font-weight: 700; }
 .antrop-table tbody tr:last-child th, .antrop-table tbody tr:last-child td { border-bottom: none; }
 #antrop-campi .antrop-group:first-child { margin-top: 4px; }
+
+/* Tabella storico BIA: scorre in orizzontale invece di sbordare dalla card (colonna Online/Nascosta) */
+.bia-history-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.bia-toggle { white-space: nowrap; }
